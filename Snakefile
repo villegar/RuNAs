@@ -63,6 +63,9 @@ rule fastqc_raw:
 		"reads/{library}_{replicate}.fastq.gz"
 		#r1 = "reads/{library}_1.fastq.gz",
 		#r2 = "reads/{library}_2.fastq.gz"
+	#log:
+	#	"1.QC.RAW/{library}_{replicate}_fastqc.txt"
+	#	"1.QC.RAW/{library}_{replicate}.log".format(library=LIBS, replicate=[1,2])
 	output:	
 		"1.QC.RAW/{library}_{replicate}_fastqc.{format}"
 	#	"1.QC.RAW/{library}_{replicate}_fastqc.html",
@@ -75,6 +78,8 @@ rule trimm_reads:
 		adapter = os.path.join(ADAPTER,"../share/trimmomatic/adapters"),
 		r1 = "reads/{library}_1.fastq.gz",
                 r2 = "reads/{library}_2.fastq.gz"
+	log:
+		"2.TRIMMED/{library}.log"
 	output:
 		forward_paired = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
 		forward_unpaired = "2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz",
@@ -90,6 +95,8 @@ rule fastqc_trimmed:
                 #forward_unpaired = "2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz",
                 #reverse_paired = "2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz",
                 #reverse_unpaired = "2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz"
+	log:
+		"3.QC.TRIMMED/{library}_{direction}_{mode}.txt"
 	output:
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
@@ -105,7 +112,7 @@ rule download_genome:
 		#expand("GENOME/{file}", file = GENOME4STAR.keys())
 	run:
 		for link_index in sorted(GENOME4STAR.keys()):
-            		shell("wget {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
+            		shell("wget -q {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
 			shell("yes n | gunzip GENOME/{file}".format(file=link_index))
 
 rule genome_index:
