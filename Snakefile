@@ -45,6 +45,7 @@ rule all:
                 expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
 		#expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES),
+		#expand("GENOME_INDEX"),
 		expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam", library=LIBS)
 		#expand("4.STAR/{library}_{star_file}",library=LIBS,
 		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
@@ -108,9 +109,10 @@ rule genome_index:
 		##"GENOME/{genome_file}"
 		#genome_files = expand("GENOME/{file}", file = GENOME4STAR_FILENAMES)
 	output:
+	#	dir = expand("GENOME_INDEX")
 		dir = directory("GENOME_INDEX")
 	shell:
-		"STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
+		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
 		
 rule star:
 	input:
