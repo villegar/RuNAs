@@ -95,8 +95,8 @@ rule fastqc_trimmed:
                 #forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
                 #reverse_paired = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
                 #reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
-	log:
-		"3.QC.TRIMMED/{library}_{direction}_{mode}.txt"
+	#log:
+	#	"3.QC.TRIMMED/{library}_{direction}_{mode}.txt"
 	output:
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
