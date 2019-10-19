@@ -40,19 +40,11 @@ GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 rule all:
 	input:
 		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
-		#expand("1.QC.RAW/{library}_{replicate}_fastq.html", library=LIBS, replicate=[1, 2]),
-		#expand("1.QC.RAW/{library}_{replicate}_fastq.zip", library=LIBS, replicate=[1, 2]),
 		expand("2.TRIMMED/{library}_{direction}_{mode}.fastq.gz",
                         library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-		#expand("2.TRIMMED/{library}_forward_paired.fastq.gz", library=LIBS),
-		#expand("2.TRIMMED/{library}_forward_unpaired.fastq.gz", library=LIBS),
-		#expand("2.TRIMMED/{library}_reverse_paired.fastq.gz", library=LIBS),
-		#expand("2.TRIMMED/{library}_reverse_unpaired.fastq.gz", library=LIBS),
-		#expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html", 
-		#	library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
                 expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
-		expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES),
+		#expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES),
 		expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam", library=LIBS)
 		#expand("4.STAR/{library}_{star_file}",library=LIBS,
 		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
@@ -104,10 +96,8 @@ rule fastqc_trimmed:
                 "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
 rule download_genome:
-	#input:
-	#	expand("GENOME/{file}", file = GENOME4STAR.keys())
 	output:
-		expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
+		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
 		#"GENOME/{genome_file}"
 		#expand("GENOME/{file}", file = GENOME4STAR.keys())
 	run:
@@ -117,16 +107,18 @@ rule download_genome:
 
 rule genome_index:
 	input:
-		#"GENOME/{genome_file}"
-		genome_files = expand("GENOME/{file}", file = GENOME4STAR_FILENAMES)
+		genome_files = rules.download_genome.output.genome_files
+		##"GENOME/{genome_file}"
+		#genome_files = expand("GENOME/{file}", file = GENOME4STAR_FILENAMES)
 	output:
-		directory("GENOME_INDEX")
+		dir = directory("GENOME_INDEX")
 	shell:
 		"STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
 		
 rule star:
 	input:
-		genome = "GENOME_INDEX",
+		genome = rules.genome_index.output.dir,
+	#	genome = "GENOME_INDEX",
 		r1 = "2.TRIMMED/{library}_forward_paired.fastq.gz",
 		r2 = "2.TRIMMED/{library}_reverse_paired.fastq.gz"
 	output:
