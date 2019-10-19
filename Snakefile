@@ -107,7 +107,7 @@ rule genome_index:
 	shell:
 		"STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
 		
-rule star
+rule star:
 	input:
 		genome = "GENOME",
 		r1 = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
