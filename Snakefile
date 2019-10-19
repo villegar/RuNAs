@@ -41,16 +41,19 @@ GENOME4STAR = {
 
 rule all:
 	input:
-		expand("1.QC.RAW/{library}_{replicate}_fastq.html", library=LIBS, replicate=[1, 2]),
-		expand("1.QC.RAW/{library}_{replicate}_fastq.zip", library=LIBS, replicate=[1, 2]),
-		expand("2.TRIMMED/trimm_{library}_forward_paired.fastq.gz", library=LIBS),
-		expand("2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz", library=LIBS),
-		expand("2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz", library=LIBS),
-		expand("2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz", library=LIBS),
-		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html", 
-			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-                expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.zip", 
-			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
+		expand("1.QC.RAW/{library}_{replicate}_fastq.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
+		#expand("1.QC.RAW/{library}_{replicate}_fastq.html", library=LIBS, replicate=[1, 2]),
+		#expand("1.QC.RAW/{library}_{replicate}_fastq.zip", library=LIBS, replicate=[1, 2]),
+		expand("2.TRIMMED/trimm_{library}_{direction}_{mode}.fastq.gz",
+                        library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
+		#expand("2.TRIMMED/trimm_{library}_forward_paired.fastq.gz", library=LIBS),
+		#expand("2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz", library=LIBS),
+		#expand("2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz", library=LIBS),
+		#expand("2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz", library=LIBS),
+		#expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html", 
+		#	library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
+                expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.{format}", 
+			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
 		expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam", library=LIBS)
 		#expand("4.STAR/{library}_{star_file}",library=LIBS,
 		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
@@ -58,8 +61,9 @@ rule all:
 
 rule fastqc_raw:
 	input:
-		r1 = "reads/{library}_1.fastq.gz",
-		r2 = "reads/{library}_2.fastq.gz"
+		"reads/{library}_{replicate}.fastq.gz"
+		#r1 = "reads/{library}_1.fastq.gz",
+		#r2 = "reads/{library}_2.fastq.gz"
 	output:	
 		"1.QC.RAW/{library}_{replicate}_fastq.html",
 		"1.QC.RAW/{library}_{replicate}_fastq.zip"
@@ -97,7 +101,7 @@ rule download_genome:
 	run:
 		for link_index in sorted(GENOME4STAR.keys()):
             		shell("wget {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
-			shell("gunzip GENOME/{file}".format(file=link_index))
+			shell("yes n | gunzip GENOME/{file}".format(file=link_index))
 
 GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 rule genome_index:
