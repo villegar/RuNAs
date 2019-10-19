@@ -42,12 +42,12 @@ rule all:
 		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
 		#expand("1.QC.RAW/{library}_{replicate}_fastq.html", library=LIBS, replicate=[1, 2]),
 		#expand("1.QC.RAW/{library}_{replicate}_fastq.zip", library=LIBS, replicate=[1, 2]),
-		expand("2.TRIMMED/trimm_{library}_{direction}_{mode}.fastq.gz",
+		expand("2.TRIMMED/{library}_{direction}_{mode}.fastq.gz",
                         library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-		#expand("2.TRIMMED/trimm_{library}_forward_paired.fastq.gz", library=LIBS),
-		#expand("2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz", library=LIBS),
-		#expand("2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz", library=LIBS),
-		#expand("2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz", library=LIBS),
+		#expand("2.TRIMMED/{library}_forward_paired.fastq.gz", library=LIBS),
+		#expand("2.TRIMMED/{library}_forward_unpaired.fastq.gz", library=LIBS),
+		#expand("2.TRIMMED/{library}_reverse_paired.fastq.gz", library=LIBS),
+		#expand("2.TRIMMED/{library}_reverse_unpaired.fastq.gz", library=LIBS),
 		#expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html", 
 		#	library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
                 expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
@@ -73,7 +73,7 @@ rule fastqc_raw:
 	shell:
 		"fastqc -o 1.QC.RAW -t {threads} {input}"
 
-rule trimm_reads:
+rule reads:
 	input:
 		adapter = os.path.join(ADAPTER,"../share/trimmomatic/adapters"),
 		r1 = "reads/{library}_1.fastq.gz",
@@ -81,20 +81,20 @@ rule trimm_reads:
 	log:
 		"2.TRIMMED/{library}.log"
 	output:
-		forward_paired = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
-		forward_unpaired = "2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz",
-		reverse_paired = "2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz",
-                reverse_unpaired = "2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz"
+		forward_paired = "2.TRIMMED/{library}_forward_paired.fastq.gz",
+		forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
+		reverse_paired = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
+                reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
 	shell:
 		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36"
 
 rule fastqc_trimmed:
 	input:
-		"2.TRIMMED/trimm_{library}_{direction}_{mode}.fastq.gz"
-		#forward_paired = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
-                #forward_unpaired = "2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz",
-                #reverse_paired = "2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz",
-                #reverse_unpaired = "2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz"
+		"2.TRIMMED/{library}_{direction}_{mode}.fastq.gz"
+		#forward_paired = "2.TRIMMED/{library}_forward_paired.fastq.gz",
+                #forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
+                #reverse_paired = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
+                #reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
 	log:
 		"3.QC.TRIMMED/{library}_{direction}_{mode}.txt"
 	output:
@@ -127,8 +127,8 @@ rule genome_index:
 rule star:
 	input:
 		genome = "GENOME_INDEX",
-		r1 = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
-		r2 = "2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz"
+		r1 = "2.TRIMMED/{library}_forward_paired.fastq.gz",
+		r2 = "2.TRIMMED/{library}_reverse_paired.fastq.gz"
 	output:
 	#	directory("4.STAR")
 		"4.STAR/{library}_Aligned.sortedByCoord.out.bam"
