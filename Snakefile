@@ -71,7 +71,7 @@ rule fastqc_raw:
 	#	"1.QC.RAW/{library}_{replicate}_fastqc.html",
 	#	"1.QC.RAW/{library}_{replicate}_fastqc.zip"
 	shell:
-		"fastqc -o 1.QC.RAW -t {threads} {input}"
+		"fastqc -q -o 1.QC.RAW -t {threads} {input}"
 
 rule reads:
 	input:
@@ -101,7 +101,7 @@ rule fastqc_trimmed:
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
 	shell:
-                "fastqc -o 3.QC.TRIMMED -t {threads} {input}"
+                "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
 rule download_genome:
 	#input:
@@ -113,7 +113,7 @@ rule download_genome:
 	run:
 		for link_index in sorted(GENOME4STAR.keys()):
             		shell("wget -q {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
-			shell("yes n | gunzip GENOME/{file}".format(file=link_index))
+			shell("gunzip GENOME/{file}".format(file=link_index))
 
 rule genome_index:
 	input:
