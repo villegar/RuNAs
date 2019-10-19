@@ -51,9 +51,10 @@ rule all:
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
                 expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.zip", 
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-		expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam",library=LIBS)
+		expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam", library=LIBS)
 		#expand("4.STAR/{library}_{star_file}",library=LIBS,
 		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
+		#expand("4.STAR/STAR.report.html", library = LIBS)
 
 rule fastqc_raw:
 	input:
@@ -109,13 +110,25 @@ rule genome_index:
 		
 rule star:
 	input:
-		genome = "GENOME",
+		genome = "GENOME_INDEX",
 		r1 = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
 		r2 = "2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz"
 	output:
+	#	directory("4.STAR")
 		"4.STAR/{library}_Aligned.sortedByCoord.out.bam"
 	#	prefix = "{library}_Aligned.sortedByCoord.out.bam"
+	params:
+		out_prefix = "4.STAR/${library}"
 	shell:
-		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix 4.STAR --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
+		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.out_prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
+
+#rule multiqc:
+#	input:
+#		"4.STAR"
+#		#"4.STAR/{library}_Aligned.sortedByCoord.out.bam"
+#	output:
+#		"4.STAR/STAR.report.html"
+#	shell:
+#		"multiqc -n {output} --flat {input}"
 
 
