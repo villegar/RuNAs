@@ -38,7 +38,12 @@ rule all:
 		expand("2.TRIMMED/trimm_{library}_forward_paired.fastq.gz", library=LIBS),
 		expand("2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz", library=LIBS),
 		expand("2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz", library=LIBS),
-		expand("2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz", library=LIBS)
+		expand("2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz", library=LIBS),
+		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html", 
+			library=LIBS, direction=["forward","reverse"],mode=["paired","unpaired"]),
+                expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.zip", 
+			library=LIBS, direction=["forward","reverse"],mode=["paired","unpaired"])
+		
 
 rule fastqc_raw:
 	input:
@@ -65,10 +70,15 @@ rule trimm_reads:
 
 rule fastqc_trimmed:
 	input:
-                r1 = "2.TRIMMED/{library}_1.fastq.gz",
-                r2 = "2.TRIMMED/{library}_2.fastq.gz"
-        output:
-                "1.QC.RAW/{library}_{replicate}_fastq.html",
-                "1.QC.RAW/{library}_{replicate}_fastq.zip"
-        shell:
-                "fastqc -o 1.QC.RAW -t {threads} {input}"
+		"2.TRIMMED/trimm_{library}_{direction}_{mode}.fastq.gz"
+		#forward_paired = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
+                #forward_unpaired = "2.TRIMMED/trimm_{library}_forward_unpaired.fastq.gz",
+                #reverse_paired = "2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz",
+                #reverse_unpaired = "2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz"
+	output:
+                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html",
+                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.zip"
+	shell:
+                "fastqc -o 3.QC.TRIMMED -t {threads} {input}"
+
+
