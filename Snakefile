@@ -5,7 +5,6 @@ import glob
 import os
 
 ####### Util functions #######
-
 def filenames(path,prefix,suffix):
 	filenames_path = glob.glob(os.path.join(path,prefix) + "*" + suffix)
 	names = []
@@ -26,7 +25,6 @@ def which(file):
         return None
 
 ####### Global variables #######
-
 READS = "/gpfs/scratch/Classes/stat736/p53reads"
 PREFIX = "SRR"
 SUFFIX = "_1.fastq.gz"
@@ -36,12 +34,12 @@ GENOME4STAR = {
 	"GRCm38.primary_assembly.genome.fa.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
 	"gencode.vM22.annotation.gtf.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
 }
+GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 
 ####### Rules #######
-
 rule all:
 	input:
-		expand("1.QC.RAW/{library}_{replicate}_fastq.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
+		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
 		#expand("1.QC.RAW/{library}_{replicate}_fastq.html", library=LIBS, replicate=[1, 2]),
 		#expand("1.QC.RAW/{library}_{replicate}_fastq.zip", library=LIBS, replicate=[1, 2]),
 		expand("2.TRIMMED/trimm_{library}_{direction}_{mode}.fastq.gz",
@@ -52,8 +50,9 @@ rule all:
 		#expand("2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz", library=LIBS),
 		#expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html", 
 		#	library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-                expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.{format}", 
+                expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
+		expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES),
 		expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam", library=LIBS)
 		#expand("4.STAR/{library}_{star_file}",library=LIBS,
 		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
@@ -65,8 +64,9 @@ rule fastqc_raw:
 		#r1 = "reads/{library}_1.fastq.gz",
 		#r2 = "reads/{library}_2.fastq.gz"
 	output:	
-		"1.QC.RAW/{library}_{replicate}_fastq.html",
-		"1.QC.RAW/{library}_{replicate}_fastq.zip"
+		"1.QC.RAW/{library}_{replicate}_fastqc.{format}"
+	#	"1.QC.RAW/{library}_{replicate}_fastqc.html",
+	#	"1.QC.RAW/{library}_{replicate}_fastqc.zip"
 	shell:
 		"fastqc -o 1.QC.RAW -t {threads} {input}"
 
@@ -91,21 +91,26 @@ rule fastqc_trimmed:
                 #reverse_paired = "2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz",
                 #reverse_unpaired = "2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz"
 	output:
-                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html",
-                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.zip"
+                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
+                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
 	shell:
                 "fastqc -o 3.QC.TRIMMED -t {threads} {input}"
+
 rule download_genome:
+	#input:
+	#	expand("GENOME/{file}", file = GENOME4STAR.keys())
 	output:
-		expand("GENOME/{file}", file = GENOME4STAR.keys())
+		expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
+		#"GENOME/{genome_file}"
+		#expand("GENOME/{file}", file = GENOME4STAR.keys())
 	run:
 		for link_index in sorted(GENOME4STAR.keys()):
             		shell("wget {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
 			shell("yes n | gunzip GENOME/{file}".format(file=link_index))
 
-GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 rule genome_index:
 	input:
+		#"GENOME/{genome_file}"
 		genome_files = expand("GENOME/{file}", file = GENOME4STAR_FILENAMES)
 	output:
 		directory("GENOME_INDEX")
