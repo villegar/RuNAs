@@ -53,13 +53,12 @@ rule all:
 rule fastqc_raw:
 	input:
 		"reads/{library}_{replicate}.fastq.gz"
+#.format(library=LIBS, replicate=[1, 2])
 		#r1 = "reads/{library}_1.fastq.gz",
 		#r2 = "reads/{library}_2.fastq.gz"
-	#log:
-	#	"1.QC.RAW/{library}_{replicate}_fastqc.txt"
-	#	"1.QC.RAW/{library}_{replicate}.log".format(library=LIBS, replicate=[1,2])
 	output:	
 		"1.QC.RAW/{library}_{replicate}_fastqc.{format}"
+#.format(library=LIBS, replicate=[1, 2], format=["html","zip"])
 	#	"1.QC.RAW/{library}_{replicate}_fastqc.html",
 	#	"1.QC.RAW/{library}_{replicate}_fastqc.zip"
 	shell:
@@ -87,8 +86,6 @@ rule fastqc_trimmed:
                 #forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
                 #reverse_paired = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
                 #reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
-	#log:
-	#	"3.QC.TRIMMED/{library}_{direction}_{mode}.txt"
 	output:
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
