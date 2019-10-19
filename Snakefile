@@ -98,15 +98,16 @@ rule download_genome:
             		shell("wget {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
 			shell("gunzip GENOME/{file}".format(file=link_index))
 
+GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 rule genome_index:
 	input:
-		genome_files = expand("GENOME/{file}", file = GENOME4STAR.keys())
+		genome_files = expand("GENOME/{file}", file = GENOME4STAR_FILENAMES)
 	output:
-		"GENOME_INDEX"
+		directory("GENOME_INDEX")
 	shell:
-		"STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genomefiles[0]}  --sjdbGTFfile {input.genomefiles[1]} --sjdbOverhang 50"
+		"STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
 		
-rule star:
+rule star
 	input:
 		genome = "GENOME",
 		r1 = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
