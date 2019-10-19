@@ -13,12 +13,17 @@ def filenames(path,prefix,suffix):
 		names.append(os.path.basename(file).split(suffix)[0])
 	return sorted(names)
 
+def filenames2(paths,suffix):
+        names = []
+        for file in paths:
+                names.append(os.path.basename(file).split(suffix)[0])
+        return sorted(names)
+
 def which(file):
         for path in os.environ["PATH"].split(os.pathsep):
                 if os.path.exists(os.path.join(path, file)):
                         return path
         return None
-
 
 ####### Global variables #######
 
@@ -27,7 +32,10 @@ PREFIX = "SRR"
 SUFFIX = "_1.fastq.gz"
 LIBS = filenames(READS,PREFIX,SUFFIX)
 ADAPTER = which("trimmomatic")
-
+GENOME4STAR = {
+	"GRCm38.primary_assembly.genome.fa.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
+	"gencode.vM22.annotation.gtf.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
+}
 
 ####### Rules #######
 
@@ -40,10 +48,12 @@ rule all:
 		expand("2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz", library=LIBS),
 		expand("2.TRIMMED/trimm_{library}_reverse_unpaired.fastq.gz", library=LIBS),
 		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.html", 
-			library=LIBS, direction=["forward","reverse"],mode=["paired","unpaired"]),
+			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
                 expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.zip", 
-			library=LIBS, direction=["forward","reverse"],mode=["paired","unpaired"])
-		
+			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
+		expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam",library=LIBS)
+		#expand("4.STAR/{library}_{star_file}",library=LIBS,
+		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
 
 rule fastqc_raw:
 	input:
@@ -80,5 +90,31 @@ rule fastqc_trimmed:
                 "3.QC.TRIMMED/{library}_{direction}_{mode}_fastq.zip"
 	shell:
                 "fastqc -o 3.QC.TRIMMED -t {threads} {input}"
+rule download_genome:
+	output:
+		expand("GENOME/{file}", file = GENOME4STAR.keys())
+	run:
+		for link_index in sorted(GENOME4STAR.keys()):
+            		shell("wget {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
+			shell("gunzip GENOME/{file}".format(file=link_index))
+
+rule genome_index:
+	input:
+		genome_files = expand("GENOME/{file}", file = GENOME4STAR.keys())
+	output:
+		"GENOME_INDEX"
+	shell:
+		"STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genomefiles[0]}  --sjdbGTFfile {input.genomefiles[1]} --sjdbOverhang 50"
+		
+rule star:
+	input:
+		genome = "GENOME",
+		r1 = "2.TRIMMED/trimm_{library}_forward_paired.fastq.gz",
+		r2 = "2.TRIMMED/trimm_{library}_reverse_paired.fastq.gz"
+	output:
+		"4.STAR/{library}_Aligned.sortedByCoord.out.bam"
+	#	prefix = "{library}_Aligned.sortedByCoord.out.bam"
+	shell:
+		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix 4.STAR --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
 
 
