@@ -94,7 +94,7 @@ rule trim_reads:
 	message:
 		"Trimming reads"
 	threads:
-		20
+		5
 	shell:
 		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36"
 
@@ -126,6 +126,8 @@ rule genome_index:
 		genome_files = rules.download_genome.output.genome_files
 	output:
 		dir = directory("GENOME_INDEX")
+	threads: 
+		40
 	shell:
 		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
 		
