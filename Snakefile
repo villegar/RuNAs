@@ -26,6 +26,10 @@ def which(file):
 READS = "/gpfs/scratch/Classes/stat736/p53reads"
 PREFIX = "SRR"
 SUFFIX = "_1.fastq.gz"
+CPUS_FASTQC = 2
+CPUS_PHIX = 15
+CPUS_TRIMMING = 5
+CPUS_STAR = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
 ADAPTER = which("trimmomatic")
 GENOME4STAR = {
@@ -34,6 +38,9 @@ GENOME4STAR = {
 }
 GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 
+GENOME4PHIX = {
+	"PhiX" : "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
+}
 ####### Rules #######
 rule all:
 	input:
@@ -49,7 +56,7 @@ rule all:
 		expand("4.STAR/{library}_{star_file}", library=LIBS,
 			star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
 ##			star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
-#		#expand("4.STAR/STAR.report.html", library = LIBS)
+		expand("5.PHIX/{library}.sam", library=LIBS),
 		"done.txt"
 rule reads:	
 	input:
@@ -75,7 +82,7 @@ rule fastqc_raw:
 	message:
 		"FastQC on raw data"
 	threads:
-		10
+		CPUS_FASTQC
 	shell:
 		"fastqc -q -o 1.QC.RAW -t {threads} {input}"
 
@@ -94,7 +101,7 @@ rule trim_reads:
 	message:
 		"Trimming reads"
 	threads:
-		5
+		CPUS_TRIMMING
 	shell:
 		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36"
 
@@ -108,7 +115,7 @@ rule fastqc_trimmed:
 		html = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
 		zip  = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
 	threads:
-		10
+		CPUS_FASTQC
 	shell:
                 "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
@@ -117,8 +124,8 @@ rule download_genome:
 		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
 	run:
 		for link_index in sorted(GENOME4STAR.keys()):
-            		shell("wget -q -O - {link} | gunzip -c > GENOME/{file}".format(link=GENOME4STAR[link_index], file = filenames2(link_index,".gz")))
-			#shell("wget -q {link} -O GENOME/{file} && ".format(link=GENOME4STAR[link_index], file=link_index))
+            		#shell("wget -q -O - {link} | gunzip -c > GENOME/{file}".format(link=GENOME4STAR[link_index], file = filenames2(link_index,".gz")))
+			shell("wget -q {link} -O GENOME/{file} && gunzip GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
 			#shell("gunzip GENOME/{file}".format(file=link_index))
 
 rule genome_index:
@@ -147,9 +154,31 @@ rule star:
 	params:
 		prefix = "4.STAR/{library}"
 	threads:
-		20
+		CPUS_STAR
 	shell:
 		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
+
+rule phiX_genome:
+	output:
+		genome = expand("{genome_phix}", genome_phix = GENOME4PHIX.keys())
+	run:
+		for link_index in sorted(GENOME4PHIX.keys()):
+			shell("wget -q -O - {link} | tar -xz".format(link=GENOME4PHIX[link_index]))
+
+rule phiX_contamination:
+	input:
+		genome = rules.phiX_genome.output.genome,
+#		genome = expand("{genome_phix}/Illumina/RTA/Sequence/Bowtie2Index/genome", genome_phix = GENOME4PHIX.keys()),
+#		genome	= expand(rules.phiX_genome.output.genome + "Illumina/RTA/Sequence/Bowtie2Index/genome"),
+#		genome 	= rules.phiX_genome.output.genome + ["Illumina/RTA/Sequence/Bowtie2Index/genome"],
+		r1 	= "2.TRIMMED/{library}_forward_paired.fastq.gz",
+                r2 	= "2.TRIMMED/{library}_reverse_paired.fastq.gz"
+	output:
+		sam = "5.PHIX/{library}.sam"
+	threads:
+		CPUS_PHIX
+	shell:
+		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output}"	
 
 rule finish:
 #	input: 
