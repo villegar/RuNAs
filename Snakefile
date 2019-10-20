@@ -40,11 +40,11 @@ PATTERN_R2 = "{library}_2.fastq.gz".format(library=LIBS)
 ####### Rules #######
 rule all:
 	input:
-#		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
-#		expand("2.TRIMMED/{library}_{direction}_{mode}.fastq.gz",
-#                        library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-#		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
-#			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
+		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
+		expand("2.TRIMMED/{library}_{direction}_{mode}.fastq.gz",
+                        library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
+		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
+			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
 #		#expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES),
 #		#expand("GENOME_INDEX"),
 #		expand("4.STAR"),
@@ -55,42 +55,41 @@ rule all:
 		"done.txt"
 rule reads:	
 	input:
-		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2]),
-		r1 = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
-		r2 = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
-		, step = "1"
+		reads = READS + "/{library}_{replicate}.fastq.gz",
+		r1    = READS + "/{library}_1.fastq.gz",
+		r2    = READS + "/{library}_2.fastq.gz"
+#		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2]),
+#		r1    = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
+#		r2    = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
+#	output:
+#		directory(READS)
 	message:
 		"Gathering reads"
 
 rule fastqc_raw:
 	input:
 		reads = rules.reads.input.reads
-#		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2])
-#		reads = os.path.join(READS,"{library}_{replicate}.fastq.gz".format(library=LIBS, replicate=[1, 2]))
-#		, step = rules.reads.output.step
-#		"reads/{library}_{replicate}.fastq.gz"
+		#, step  = rules.reads.output.step
+#		reads = READS + "/{library}_{replicate}.fastq.gz"
 	output:	
-		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS,replicate=[1,2],format=["html","zip"])
-		#, step = "2"
+		html = "1.QC.RAW/{library}_{replicate}_fastqc.html",
+		zip  = "1.QC.RAW/{library}_{replicate}_fastqc.zip"
 	message:
 		"FastQC on raw data"
 	shell:
-		"fastqc -q -o 1.QC.RAW -t {threads} {input.reads}"
+		"fastqc -q -o 1.QC.RAW -t {threads} {input}"
 
 rule trim_reads:
 	input:
 		adapter = os.path.join(ADAPTER,"../share/trimmomatic/adapters"),
+#		r1      = READS + "/{library}_1.fastq.gz",
+#		r2	= READS + "/{library}_2.fastq.gz"
 		r1 = rules.reads.input.r1,
 		r2 = rules.reads.input.r2
-#		r1 = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
-#		r2 = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
-#		, step = rules.fastqc_raw.output.step
 	output:
-		forward_paired = expand("2.TRIMMED/{library}_forward_paired.fastq.gz", library=LIBS),
-		forward_unpaired = expand("2.TRIMMED/{library}_forward_unpaired.fastq.gz", library=LIBS),
-		reverse_paired = expand("2.TRIMMED/{library}_reverse_paired.fastq.gz", library=LIBS),
-                reverse_unpaired = expand("2.TRIMMED/{library}_reverse_unpaired.fastq.gz", library=LIBS)
-		, step = "3"
+		forward_paired   = "2.TRIMMED/{library}_forward_paired.fastq.gz",
+		forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
+		reverse_paired   = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
 	message:
 		"Trimming reads"
 	shell:
@@ -102,16 +101,9 @@ rule fastqc_trimmed:
 		rules.trim_reads.output.forward_unpaired,
 		rules.trim_reads.output.reverse_paired,
 		rules.trim_reads.output.reverse_unpaired
-#		"2.TRIMMED/{library}_{direction}_{mode}.fastq.gz".format(library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"])
-#		, step = rules.trim_reads.output.step
-		#forward_paired = "2.TRIMMED/{library}_forward_paired.fastq.gz",
-                #forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
-                #reverse_paired = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
-                #reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
 	output:
-                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html".format(library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip".format(library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"])
-		, step = "4"
+		html = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
+		zip = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
 	shell:
                 "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
@@ -148,13 +140,15 @@ rule star:
 
 rule finish:
 	input: 
-		rules.star.output,
-		rules.fastqc_raw.output,
-		rules.fastqc_trimmed.output
+		rules.star.output.step
+#		rules.star.output,
+#		rules.fastqc_raw.output,
+#		rules.fastqc_trimmed.output
 	output:
 		"done.txt"
-	shell:
-		"echo 'Done'"
+#	shell:
+#		"echo 'Done'"
+
 #rule multiqc:
 #	input:
 #		"4.STAR"
