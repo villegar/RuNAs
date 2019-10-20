@@ -106,7 +106,7 @@ rule fastqc_trimmed:
 		rules.trim_reads.output.reverse_unpaired
 	output:
 		html = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
-		zip = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
+		zip  = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
 	threads:
 		10
 	shell:
@@ -117,8 +117,9 @@ rule download_genome:
 		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
 	run:
 		for link_index in sorted(GENOME4STAR.keys()):
-            		shell("wget -q {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
-			shell("gunzip GENOME/{file}".format(file=link_index))
+            		shell("wget -q -O - {link} | gunzip -c > GENOME/{file}".format(link=GENOME4STAR[link_index], file = filenames2(link_index,".gz")))
+			#shell("wget -q {link} -O GENOME/{file} && ".format(link=GENOME4STAR[link_index], file=link_index))
+			#shell("gunzip GENOME/{file}".format(file=link_index))
 
 rule genome_index:
 	input:
@@ -131,13 +132,15 @@ rule genome_index:
 rule star:
 	input:
 		genome = rules.genome_index.output.dir,
-		r1 = rules.trim_reads.output.forward_paired,
-		r2 = rules.trim_reads.output.reverse_paired
+		r1 = "2.TRIMMED/{library}_forward_paired.fastq.gz",
+		r2 = "2.TRIMMED/{library}_reverse_paired.fastq.gz"
+#		r1 = rules.trim_reads.output.forward_paired,
+#		r2 = rules.trim_reads.output.reverse_paired
 	output:
-		"4.STAR/{library}_{star_file}"
-#		unmapped_m81 = "4.STAR/{library}Unmapped.out.mate1",
-#		unmapped_m82 = "4.STAR/{library}Unmapped.out.mate2",
-#		aligned_bam  = "4.STAR/{library}Aligned.sortedByCoord.out.bam"
+#		"4.STAR/{library}_{star_file}"
+		unmapped_m81 = "4.STAR/{library}_Unmapped.out.mate1",
+		unmapped_m82 = "4.STAR/{library}_Unmapped.out.mate2",
+		aligned_bam  = "4.STAR/{library}_Aligned.sortedByCoord.out.bam"
 #		directory("4.STAR")
 	params:
 		prefix = "4.STAR/{library}"
