@@ -54,7 +54,7 @@ rule all:
 #		#expand("4.STAR/STAR.report.html", library = LIBS)
 		"done.txt"
 rule reads:	
-	output:
+	input:
 		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2]),
 		r1 = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
 		r2 = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
@@ -64,7 +64,7 @@ rule reads:
 
 rule fastqc_raw:
 	input:
-		reads = rules.reads.output.reads
+		reads = rules.reads.input.reads
 #		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2])
 #		reads = os.path.join(READS,"{library}_{replicate}.fastq.gz".format(library=LIBS, replicate=[1, 2]))
 #		, step = rules.reads.output.step
@@ -80,8 +80,8 @@ rule fastqc_raw:
 rule trim_reads:
 	input:
 		adapter = os.path.join(ADAPTER,"../share/trimmomatic/adapters"),
-		r1 = rules.reads.output.r1,
-		r2 = rules.reads.output.r2
+		r1 = rules.reads.input.r1,
+		r2 = rules.reads.input.r2
 #		r1 = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
 #		r2 = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
 #		, step = rules.fastqc_raw.output.step
