@@ -53,43 +53,57 @@ rule all:
 #		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
 #		#expand("4.STAR/STAR.report.html", library = LIBS)
 		"done.txt"
-rule reads:
-	output: 
-		step = "1"
+rule reads:	
+	output:
+		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2]),
+		r1 = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
+		r2 = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
+		, step = "1"
 	message:
 		"Gathering reads"
 
 rule fastqc_raw:
 	input:
-		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2])
+		reads = rules.reads.output.reads
+#		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2])
 #		reads = os.path.join(READS,"{library}_{replicate}.fastq.gz".format(library=LIBS, replicate=[1, 2]))
-		, step = rules.reads.output.step
+#		, step = rules.reads.output.step
 #		"reads/{library}_{replicate}.fastq.gz"
 	output:	
 		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS,replicate=[1,2],format=["html","zip"])
-		, step = "2"
+		#, step = "2"
+	message:
+		"FastQC on raw data"
 	shell:
 		"fastqc -q -o 1.QC.RAW -t {threads} {input.reads}"
 
 rule trim_reads:
 	input:
 		adapter = os.path.join(ADAPTER,"../share/trimmomatic/adapters"),
-		r1 = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
-		r2 = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
-		, step = rules.fastqc_raw.output.step
+		r1 = rules.reads.output.r1,
+		r2 = rules.reads.output.r2
+#		r1 = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
+#		r2 = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
+#		, step = rules.fastqc_raw.output.step
 	output:
 		forward_paired = expand("2.TRIMMED/{library}_forward_paired.fastq.gz", library=LIBS),
 		forward_unpaired = expand("2.TRIMMED/{library}_forward_unpaired.fastq.gz", library=LIBS),
 		reverse_paired = expand("2.TRIMMED/{library}_reverse_paired.fastq.gz", library=LIBS),
                 reverse_unpaired = expand("2.TRIMMED/{library}_reverse_unpaired.fastq.gz", library=LIBS)
 		, step = "3"
+	message:
+		"Trimming reads"
 	shell:
 		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36"
 
 rule fastqc_trimmed:
 	input:
-		"2.TRIMMED/{library}_{direction}_{mode}.fastq.gz".format(library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"])
-		, step = rules.trim_reads.output.step
+		rules.trim_reads.output.forward_paired,
+		rules.trim_reads.output.forward_unpaired,
+		rules.trim_reads.output.reverse_paired,
+		rules.trim_reads.output.reverse_unpaired
+#		"2.TRIMMED/{library}_{direction}_{mode}.fastq.gz".format(library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"])
+#		, step = rules.trim_reads.output.step
 		#forward_paired = "2.TRIMMED/{library}_forward_paired.fastq.gz",
                 #forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
                 #reverse_paired = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
@@ -104,7 +118,7 @@ rule fastqc_trimmed:
 rule download_genome:
 	output:
 		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
-		, step = rules.fastqc_trimmed.output.step
+	#	, step = rules.fastqc_trimmed.output.step
 	run:
 		for link_index in sorted(GENOME4STAR.keys()):
             		shell("wget -q {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
@@ -113,10 +127,7 @@ rule download_genome:
 rule genome_index:
 	input:
 		genome_files = rules.download_genome.output.genome_files
-		##"GENOME/{genome_file}"
-		#genome_files = expand("GENOME/{file}", file = GENOME4STAR_FILENAMES)
 	output:
-	#	dir = expand("GENOME_INDEX")
 		dir = directory("GENOME_INDEX")
 	shell:
 		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
@@ -137,7 +148,9 @@ rule star:
 
 rule finish:
 	input: 
-		step = rules.star.output.step
+		rules.star.output,
+		rules.fastqc_raw.output,
+		rules.fastqc_trimmed.output
 	output:
 		"done.txt"
 	shell:
