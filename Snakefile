@@ -33,9 +33,6 @@ GENOME4STAR = {
 	"gencode.vM22.annotation.gtf.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
 }
 GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
-PATTERN_R1 = "{library}_1.fastq.gz".format(library=LIBS)
-PATTERN_R2 = "{library}_2.fastq.gz".format(library=LIBS)
-
 
 ####### Rules #######
 rule all:
@@ -47,10 +44,11 @@ rule all:
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
 #		#expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES),
 #		#expand("GENOME_INDEX"),
-#		expand("4.STAR"),
+#		expand("4.STAR", library=LIBS),
 #		#expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam", library=LIBS)
-#		#expand("4.STAR/{library}_{star_file}",library=LIBS,
-#		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
+		expand("4.STAR/{library}_{star_file}", library=LIBS,
+			star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
+##			star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
 #		#expand("4.STAR/STAR.report.html", library = LIBS)
 		"done.txt"
 rule reads:	
@@ -76,6 +74,8 @@ rule fastqc_raw:
 		zip  = "1.QC.RAW/{library}_{replicate}_fastqc.zip"
 	message:
 		"FastQC on raw data"
+	threads:
+		10
 	shell:
 		"fastqc -q -o 1.QC.RAW -t {threads} {input}"
 
@@ -90,8 +90,11 @@ rule trim_reads:
 		forward_paired   = "2.TRIMMED/{library}_forward_paired.fastq.gz",
 		forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
 		reverse_paired   = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
+		reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
 	message:
 		"Trimming reads"
+	threads:
+		20
 	shell:
 		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36"
 
@@ -104,13 +107,14 @@ rule fastqc_trimmed:
 	output:
 		html = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
 		zip = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
+	threads:
+		10
 	shell:
                 "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
 rule download_genome:
 	output:
 		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
-	#	, step = rules.fastqc_trimmed.output.step
 	run:
 		for link_index in sorted(GENOME4STAR.keys()):
             		shell("wget -q {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
@@ -127,20 +131,24 @@ rule genome_index:
 rule star:
 	input:
 		genome = rules.genome_index.output.dir,
-		r1 = expand("2.TRIMMED/{library}_forward_paired.fastq.gz", library=LIBS),
-		r2 = expand("2.TRIMMED/{library}_reverse_paired.fastq.gz", library=LIBS)
+		r1 = rules.trim_reads.output.forward_paired,
+		r2 = rules.trim_reads.output.reverse_paired
 	output:
-		directory("4.STAR")
-		, step = "10"
-	#	"4.STAR/{library}_Aligned.sortedByCoord.out.bam"
+		"4.STAR/{library}_{star_file}"
+#		unmapped_m81 = "4.STAR/{library}Unmapped.out.mate1",
+#		unmapped_m82 = "4.STAR/{library}Unmapped.out.mate2",
+#		aligned_bam  = "4.STAR/{library}Aligned.sortedByCoord.out.bam"
+#		directory("4.STAR")
 	params:
-		out_prefix = expand("4.STAR/${library}", library=LIBS)
+		prefix = "4.STAR/{library}"
+	threads:
+		20
 	shell:
-		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.out_prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
+		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
 
 rule finish:
-	input: 
-		rules.star.output.step
+#	input: 
+#		rules.star.output
 #		rules.star.output,
 #		rules.fastqc_raw.output,
 #		rules.fastqc_trimmed.output
