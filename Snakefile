@@ -171,10 +171,10 @@ rule genome_index:
 rule star:
 	input:
 		genome = rules.genome_index.output.dir,
-		r1 = "2.TRIMMED/{library}_forward_paired.fastq.gz",
-		r2 = "2.TRIMMED/{library}_reverse_paired.fastq.gz"
-#		r1 = rules.trim_reads.output.forward_paired,
-#		r2 = rules.trim_reads.output.reverse_paired
+#		r1 = "2.TRIMMED/{library}_forward_paired.fastq.gz",
+#		r2 = "2.TRIMMED/{library}_reverse_paired.fastq.gz"
+		r1 = rules.trim_reads.output.forward_paired,
+		r2 = rules.trim_reads.output.reverse_paired
 	output:
 #		"4.STAR/{library}_{star_file}"
 		unmapped_m81 = "4.STAR/{library}_Unmapped.out.mate1",
