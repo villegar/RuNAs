@@ -31,6 +31,7 @@ CPUS_FASTQC = 3
 CPUS_PHIX = 15
 CPUS_TRIMMING = 5
 CPUS_STAR = 20
+CPUS_KRAKEN = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
 LIBS = ["SRR2121770"]
 FTP = FTPRemoteProvider()
@@ -44,7 +45,9 @@ GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 GENOME4PHIX = {
 	"PhiX" : "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
 }
-
+KRAKEN_DB = {
+	"minikraken_20171019_8GB" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
+}
 #shell("mkdir -p GENOME")
 #for file, link in GENOME4STAR.items():
 #	shell("curl -sS -L {link} -o GENOME/{file}")
@@ -65,7 +68,8 @@ rule all:
 		expand("4.STAR/{library}_{star_file}", library=LIBS,
 			star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
 ##			star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
-		expand("5.PHIX/{library}.sam", library=LIBS)
+		expand("5.PHIX/{library}.sam", library=LIBS),
+		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"])
 #,
 		#"done.txt"
 rule reads:	
@@ -199,6 +203,27 @@ rule phiX_contamination:
 	shell:
 		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output}"	
 
+rule kraken_db:
+	output:
+		kraken_db = directory(expand("{db}", db = KRAKEN_DB.keys()))
+	run:
+		for link_index in sorted(KRAKEN_DB.keys()):
+			shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
+
+rule microbial_contamination:
+	input:
+		unmapped_m81 	= rules.star.output.unmapped_m81,
+		unmapped_m82 	= rules.star.output.unmapped_m82,
+		kraken_db	= rules.kraken_db.output.kraken_db
+	output:
+		out = "6.MICROBIAL/{library}.out",
+		tsv = "6.MICROBIAL/{library}.tsv"
+	message:
+		"Running KrakenSeq to find microbial contamination"
+	threads:
+		CPUS_KRAKEN
+	shell:
+		"krakenuniq --db {input.kraken_db} --threads {threads} --paired --report-file {output.tsv} --fastq-input {input.unmapped_m81} {input.unmapped_m82} > {output.out}"
 #rule finish:
 #	input: 
 #		rules.star.output
