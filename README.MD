@@ -1,4 +1,5 @@
 # RuNAs: RNAseq Pipeline
+![Rule Graph](images/rule-graph.png?raw=true "Title")
 ## Requirements
 -	Python 3.6+ (using Anaconda)
 
