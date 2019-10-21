@@ -51,7 +51,7 @@ GENOME4PHIX = {
 KRAKEN_DB = {
 	"minikraken_20171019_8GB" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
 }
-rRNA = {
+RRNA = {
 	"txid9606.fasta" : "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
 }
 #shell("mkdir -p GENOME")
@@ -135,6 +135,8 @@ rule fastqc_trimmed:
 	output:
 		html = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
 		zip  = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
+	message:
+		"FastQC on trimmed data"
 	threads:
 		CPUS_FASTQC
 	shell:
@@ -225,7 +227,7 @@ rule kraken_db:
 		CPUS_ARIA
 	run:
 		for link_index in sorted(KRAKEN_DB.keys()):
-			shell("aria2c -x {threads} -s {threads} {link} && tar -xz".format(link=KRAKEN_DB[link_index]))	
+			shell("aria2c -x {threads} -s {threads} {link} && tar -xz link_index".format(link=KRAKEN_DB[link_index]))	
 		#	shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
 
 rule microbial_contamination:
@@ -249,9 +251,9 @@ rule rRNA_index:
 	message:
 		"Create rRNA index"
 	run:
-		for link_index in sorted(rRNA.keys()):
-			shell("mkdir -p {output.index")
-			shell("wget -q -O {link} && mv {link_index} {output.index}".format(link=rRNA[link_index]))
+		for link_index in sorted(RRNA.keys()):
+			shell("mkdir -p {output.index}")
+			shell("wget -q -O {link} && mv {link_index} {output.index}".format(link=RRNA[link_index]))
 			shell("bwa index {link_index}")
 	
 rule rRNA_contamination:
