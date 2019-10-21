@@ -1,6 +1,7 @@
 ####### Libraries #######
 import glob
 import os
+from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
 
 ####### Util functions #######
 def filenames(path,prefix,suffix):
@@ -26,11 +27,13 @@ def which(file):
 READS = "/gpfs/scratch/Classes/stat736/p53reads"
 PREFIX = "SRR"
 SUFFIX = "_1.fastq.gz"
-CPUS_FASTQC = 2
+CPUS_FASTQC = 3
 CPUS_PHIX = 15
 CPUS_TRIMMING = 5
 CPUS_STAR = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
+LIBS = ["SRR2121770"]
+FTP = FTPRemoteProvider()
 ADAPTER = which("trimmomatic")
 GENOME4STAR = {
 	"GRCm38.primary_assembly.genome.fa.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
@@ -41,6 +44,7 @@ GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 GENOME4PHIX = {
 	"PhiX" : "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
 }
+
 ####### Rules #######
 rule all:
 	input:
@@ -56,8 +60,9 @@ rule all:
 		expand("4.STAR/{library}_{star_file}", library=LIBS,
 			star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
 ##			star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
-		expand("5.PHIX/{library}.sam", library=LIBS),
-		"done.txt"
+		expand("5.PHIX/{library}.sam", library=LIBS)
+#,
+		#"done.txt"
 rule reads:	
 	input:
 		reads = READS + "/{library}_{replicate}.fastq.gz",
@@ -120,13 +125,21 @@ rule fastqc_trimmed:
                 "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
 rule download_genome:
+#	input:
+#		FTP.remote(expand("{link}",link=GENOME4STAR.values()), keep_local = True, immediate_close=True)
 	output:
 		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
 	run:
-		for link_index in sorted(GENOME4STAR.keys()):
-            		#shell("wget -q -O - {link} | gunzip -c > GENOME/{file}".format(link=GENOME4STAR[link_index], file = filenames2(link_index,".gz")))
-			shell("wget -q {link} -O GENOME/{file} && gunzip GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
-			#shell("gunzip GENOME/{file}".format(file=link_index))
+#		shell("mv {input} GENOME")
+		#for link_index in sorted(GENOME4STAR.keys()):
+		for file, link in GENOME4STAR.items():
+			shell("curl -sS -L {link} -o GENOME/{file}")
+			shell("gunzip GENOME/{file}")	
+#			shell("bash download_files.sh {link} && mv {link} GENOME".format(link=GENOME4STAR[link_index]))
+#			shell("mv {input} GENOME")
+#            		#shell("wget -q -O - {link} | gunzip -c > GENOME/{file}".format(link=GENOME4STAR[link_index], file = filenames2(link_index,".gz")))
+#			shell("wget -q {link} -O GENOME/{file} && gunzip GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
+#			shell("gunzip GENOME/{file}".format(file=link_index))
 
 rule genome_index:
 	input:
@@ -160,7 +173,7 @@ rule star:
 
 rule phiX_genome:
 	output:
-		genome = expand("{genome_phix}", genome_phix = GENOME4PHIX.keys())
+		genome = directory(expand("{genome_phix}", genome_phix = GENOME4PHIX.keys()))
 	run:
 		for link_index in sorted(GENOME4PHIX.keys()):
 			shell("wget -q -O - {link} | tar -xz".format(link=GENOME4PHIX[link_index]))
@@ -180,14 +193,14 @@ rule phiX_contamination:
 	shell:
 		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output}"	
 
-rule finish:
+#rule finish:
 #	input: 
 #		rules.star.output
 #		rules.star.output,
 #		rules.fastqc_raw.output,
 #		rules.fastqc_trimmed.output
-	output:
-		"done.txt"
+#	output:
+#		"done.txt"
 #	shell:
 #		"echo 'Done'"
 
