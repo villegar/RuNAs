@@ -236,7 +236,7 @@ rule microbial_contamination:
 	threads:
 		CPUS_KRAKEN
 	shell:
-		"krakenuniq --db {input.kraken_db} --threads {threads} --paired --report-file {output.tsv} --fastq-input {input.unmapped_m81} {input.unmapped_m82} > {output.out}"
+		"krakenuniq --preload --db {input.kraken_db} --threads {threads} --paired --report-file {output.tsv} --fastq-input {input.unmapped_m81} {input.unmapped_m82} > {output.out}"
 #rule finish:
 #	input: 
 #		rules.star.output
