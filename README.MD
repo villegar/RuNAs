@@ -9,5 +9,5 @@ git clone https://github.com/villegar/runas
 cd runas
 conda env create -f environment.yml
 python download.genome.py human-genome.json
-
+snakemake -j CPUS 
 ```
