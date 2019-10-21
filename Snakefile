@@ -75,7 +75,8 @@ rule all:
 			star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
 ##			star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
 		expand("5.PHIX/{library}.sam", library=LIBS),
-		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"])
+		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
+		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
 #,
 		#"done.txt"
 rule reads:	
@@ -242,7 +243,7 @@ rule microbial_contamination:
 	shell:
 		"krakenuniq --preload --db {input.kraken_db} --threads {threads} --paired --report-file {output.tsv} --fastq-input {input.unmapped_m81} {input.unmapped_m82} > {output.out}"
 
-rule RNA_index:
+rule rRNA_index:
 	output:
 		index = directory("BWA_INDEX")
 	message:
@@ -250,14 +251,14 @@ rule RNA_index:
 	run:
 		for link_index in sorted(rRNA.keys()):
 			shell("mkdir -p {output.index")
-			shell("wget -q -O {link} && mv {link_index} {output.index}".format(link=rRNA[link_index])
+			shell("wget -q -O {link} && mv {link_index} {output.index}".format(link=rRNA[link_index]))
 			shell("bwa index {link_index}")
 	
 rule rRNA_contamination:
 	input:
 		r1 = rules.trim_reads.output.forward_paired,
 		r2 = rules.trim_reads.output.reverse_paired,
-		index = rules.RNA_index.output.index
+		index = rules.rRNA_index.output.index
 	output:
 		sam = "7.rRNA/{library}.rna.sam",
 		bam = "7.rRNA/{library}.rna.bam",
