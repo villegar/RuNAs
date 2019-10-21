@@ -34,6 +34,7 @@ CPUS_TRIMMING = 5
 CPUS_STAR = 20
 CPUS_ARIA = 16
 CPUS_KRAKEN = 20
+CPUS_RNA = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
 LIBS = ["SRR2121770"]
 FTP = FTPRemoteProvider()
@@ -49,6 +50,9 @@ GENOME4PHIX = {
 }
 KRAKEN_DB = {
 	"minikraken_20171019_8GB" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
+}
+rRNA = {
+	"txid9606.fasta" : "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
 }
 #shell("mkdir -p GENOME")
 #for file, link in GENOME4STAR.items():
@@ -237,6 +241,36 @@ rule microbial_contamination:
 		CPUS_KRAKEN
 	shell:
 		"krakenuniq --preload --db {input.kraken_db} --threads {threads} --paired --report-file {output.tsv} --fastq-input {input.unmapped_m81} {input.unmapped_m82} > {output.out}"
+
+rule RNA_index:
+	output:
+		index = directory("BWA_INDEX")
+	message:
+		"Create rRNA index"
+	run:
+		for link_index in sorted(rRNA.keys()):
+			shell("mkdir -p {output.index")
+			shell("wget -q -O {link} && mv {link_index} {output.index}".format(link=rRNA[link_index])
+			shell("bwa index {link_index}")
+	
+rule rRNA_contamination:
+	input:
+		r1 = rules.trim_reads.output.forward_paired,
+		r2 = rules.trim_reads.output.reverse_paired,
+		index = rules.RNA_index.output.index
+	output:
+		sam = "7.rRNA/{library}.rna.sam",
+		bam = "7.rRNA/{library}.rna.bam",
+		out = "7.rRNA/{library}.rna.out"
+	message:
+		"Running BWA and Samtools to find rRNA contamination"
+	threads:
+		CPUS_RNA
+	run:
+		shell("bwa mem -t {threads} {input.index} {input.r1} {input.r2} > {output.sam}")
+		shell("samtools view -@ {threads} -bS -o {output.bam} {output.sam}")
+		shell("samtools flagstat -@ {threads} {output.bam} > {output.out}")
+		
 #rule finish:
 #	input: 
 #		rules.star.output
