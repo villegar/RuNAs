@@ -45,6 +45,11 @@ GENOME4PHIX = {
 	"PhiX" : "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
 }
 
+#shell("mkdir -p GENOME")
+#for file, link in GENOME4STAR.items():
+#	shell("curl -sS -L {link} -o GENOME/{file}")
+#	shell("gunzip GENOME/{file}")
+
 ####### Rules #######
 rule all:
 	input:
@@ -124,26 +129,27 @@ rule fastqc_trimmed:
 	shell:
                 "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
-rule download_genome:
-#	input:
-#		FTP.remote(expand("{link}",link=GENOME4STAR.values()), keep_local = True, immediate_close=True)
-	output:
-		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
-	run:
-#		shell("mv {input} GENOME")
-		#for link_index in sorted(GENOME4STAR.keys()):
-		for file, link in GENOME4STAR.items():
-			shell("curl -sS -L {link} -o GENOME/{file}")
-			shell("gunzip GENOME/{file}")	
-#			shell("bash download_files.sh {link} && mv {link} GENOME".format(link=GENOME4STAR[link_index]))
-#			shell("mv {input} GENOME")
-#            		#shell("wget -q -O - {link} | gunzip -c > GENOME/{file}".format(link=GENOME4STAR[link_index], file = filenames2(link_index,".gz")))
-#			shell("wget -q {link} -O GENOME/{file} && gunzip GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
-#			shell("gunzip GENOME/{file}".format(file=link_index))
+#rule download_genome:
+##	input:
+##		FTP.remote(expand("{link}",link=GENOME4STAR.values()), keep_local = True, immediate_close=True)
+#	output:
+#		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
+#	run:
+##		shell("mv {input} GENOME")
+#		#for link_index in sorted(GENOME4STAR.keys()):
+##		for file, link in GENOME4STAR.items():
+##			shell("curl -sS -L {link} -o GENOME/{file}")
+##			shell("gunzip GENOME/{file}")	
+##			shell("bash download_files.sh {link} && mv {link} GENOME".format(link=GENOME4STAR[link_index]))
+##			shell("mv {input} GENOME")
+##            		#shell("wget -q -O - {link} | gunzip -c > GENOME/{file}".format(link=GENOME4STAR[link_index], file = filenames2(link_index,".gz")))
+##			shell("wget -q {link} -O GENOME/{file} && gunzip GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
+##			shell("gunzip GENOME/{file}".format(file=link_index))
 
 rule genome_index:
 	input:
-		genome_files = rules.download_genome.output.genome_files
+		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
+#		genome_files = rules.download_genome.output.genome_files
 	output:
 		dir = directory("GENOME_INDEX")
 	threads: 
@@ -165,7 +171,7 @@ rule star:
 		aligned_bam  = "4.STAR/{library}_Aligned.sortedByCoord.out.bam"
 #		directory("4.STAR")
 	params:
-		prefix = "4.STAR/{library}"
+		prefix = "4.STAR/{library}_"
 	threads:
 		CPUS_STAR
 	shell:
