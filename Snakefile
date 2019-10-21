@@ -26,11 +26,13 @@ def which(file):
 ####### Global variables #######
 READS = "/gpfs/scratch/Classes/stat736/p53reads"
 PREFIX = "SRR"
-SUFFIX = "_1.fastq.gz"
+EXTENSION = "fastq.gz"
+SUFFIX = "_1" + EXTENSION
 CPUS_FASTQC = 3
 CPUS_PHIX = 15
 CPUS_TRIMMING = 5
 CPUS_STAR = 20
+CPUS_ARIA = 16
 CPUS_KRAKEN = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
 LIBS = ["SRR2121770"]
@@ -74,9 +76,9 @@ rule all:
 		#"done.txt"
 rule reads:	
 	input:
-		reads = READS + "/{library}_{replicate}.fastq.gz",
-		r1    = READS + "/{library}_1.fastq.gz",
-		r2    = READS + "/{library}_2.fastq.gz"
+		reads = READS + "/{library}_{replicate}." + EXTENSION,
+		r1    = READS + "/{library}_1." + EXTENSION,
+		r2    = READS + "/{library}_2." + EXTENSION
 #		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2]),
 #		r1    = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
 #		r2    = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
@@ -174,6 +176,8 @@ rule star:
 		unmapped_m82 = "4.STAR/{library}_Unmapped.out.mate2",
 		aligned_bam  = "4.STAR/{library}_Aligned.sortedByCoord.out.bam"
 #		directory("4.STAR")
+	message:
+		"STAR alignment"
 	params:
 		prefix = "4.STAR/{library}_"
 	threads:
@@ -184,6 +188,8 @@ rule star:
 rule phiX_genome:
 	output:
 		genome = directory(expand("{genome_phix}", genome_phix = GENOME4PHIX.keys()))
+	message:
+		"Downloading PhiX genome reference"
 	run:
 		for link_index in sorted(GENOME4PHIX.keys()):
 			shell("wget -q -O - {link} | tar -xz".format(link=GENOME4PHIX[link_index]))
@@ -196,6 +202,8 @@ rule phiX_contamination:
 #		genome 	= rules.phiX_genome.output.genome + ["Illumina/RTA/Sequence/Bowtie2Index/genome"],
 		r1 	= "2.TRIMMED/{library}_forward_paired.fastq.gz",
                 r2 	= "2.TRIMMED/{library}_reverse_paired.fastq.gz"
+	message:
+		"PhiX contamination analysis"
 	output:
 		sam = "5.PHIX/{library}.sam"
 	threads:
@@ -206,9 +214,14 @@ rule phiX_contamination:
 rule kraken_db:
 	output:
 		kraken_db = directory(expand("{db}", db = KRAKEN_DB.keys()))
+	message:
+		"Downloading Kraken DB"
+	threads:
+		CPUS_ARIA
 	run:
 		for link_index in sorted(KRAKEN_DB.keys()):
-			shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
+			shell("aria2c -x {threads} -s {threads} {link} && tar -xz".format(link=KRAKEN_DB[link_index]))	
+		#	shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
 
 rule microbial_contamination:
 	input:
