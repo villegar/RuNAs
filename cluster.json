@@ -2,7 +2,7 @@
     "__default__" :
     {
         "time" : "1-00:00:00",
-        "nodes" : 4,
+        "nodes" : 1,
         "partition" : "compute",
 	"ntasks": 40
     }
