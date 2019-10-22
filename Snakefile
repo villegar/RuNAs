@@ -1,7 +1,7 @@
 ####### Libraries #######
 import glob
 import os
-from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
+#from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
 
 ####### Util functions #######
 def filenames(path,prefix,suffix):
@@ -24,9 +24,11 @@ def which(file):
         return None
 
 ####### Global variables #######
-READS = "/gpfs/scratch/Classes/stat736/p53reads"
+#READS = "/gpfs/scratch/Classes/stat736/p53reads"
 PREFIX = "SRR"
-EXTENSION = "fastq.gz"
+#EXTENSION = "fastq.gz"
+READS = "/gpfs/scratch/Classes/stat736/walnutreads"
+EXTENSION = "fastq"
 SUFFIX = "_1." + EXTENSION
 CPUS_FASTQC = 3
 CPUS_PHIX = 15
@@ -36,8 +38,8 @@ CPUS_ARIA = 16
 CPUS_KRAKEN = 20
 CPUS_RNA = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
-LIBS = ["SRR2121770"]
-FTP = FTPRemoteProvider()
+#LIBS = ["SRR2121770"]
+#FTP = FTPRemoteProvider()
 ADAPTER = which("trimmomatic")
 GENOME4STAR = {
 	"GRCm38.primary_assembly.genome.fa.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
