@@ -39,6 +39,7 @@ CPUS_KRAKEN = 40
 CPUS_RNA = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
 #LIBS = ["SRR2121770"]
+LIBS = ["SRR6768673"]
 #FTP = FTPRemoteProvider()
 ADAPTER = which("trimmomatic")
 GENOME4STAR = {
@@ -53,6 +54,8 @@ GENOME4PHIX = {
 KRAKEN_DB = {
 	"minikraken_20171019_8GB.tgz" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
 }
+KRAKEN_DB_FILENAMES = filenames2(KRAKEN_DB.keys(),".tgz")
+#print(KRAKEN_DB_FILENAMES)
 RRNA = {
 	"txid9606.fasta" : "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
 }
@@ -75,6 +78,7 @@ rule all:
 ##			star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
+		expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES),
 		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
 
 rule reads:	
@@ -135,29 +139,14 @@ rule fastqc_trimmed:
 	shell:
                 "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
-#rule download_genome:
-##	input:
-##		FTP.remote(expand("{link}",link=GENOME4STAR.values()), keep_local = True, immediate_close=True)
-#	output:
-#		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
-#	run:
-##		shell("mv {input} GENOME")
-#		#for link_index in sorted(GENOME4STAR.keys()):
-##		for file, link in GENOME4STAR.items():
-##			shell("curl -sS -L {link} -o GENOME/{file}")
-##			shell("gunzip GENOME/{file}")	
-##			shell("bash download_files.sh {link} && mv {link} GENOME".format(link=GENOME4STAR[link_index]))
-##			shell("mv {input} GENOME")
-##            		#shell("wget -q -O - {link} | gunzip -c > GENOME/{file}".format(link=GENOME4STAR[link_index], file = filenames2(link_index,".gz")))
-##			shell("wget -q {link} -O GENOME/{file} && gunzip GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
-##			shell("gunzip GENOME/{file}".format(file=link_index))
-
 rule genome_index:
 	input:
 		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
 #		genome_files = rules.download_genome.output.genome_files
 	output:
 		dir = directory("GENOME_INDEX")
+	message:
+		"Generate genome index for STAR"
 	threads: 
 		40
 	shell:
@@ -243,16 +232,17 @@ rule microbial_contamination:
 rule rRNA_index:
 	output:
 		#index = directory(expand("{bwa}", bwa=["BWA_INDEX"])),
-		fasta = directory(expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES))
+		#fasta = "BWA_INDEX/{bwa_files}"
+		fasta = expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES)
 	message:
 		"Create rRNA index"
 	run:
 		for link_index in sorted(RRNA.keys()):
-			shell("mkdir -p {output.index}")
+			shell("mkdir -p BWA_INDEX")
 			shell("wget -q {link}".format(link=RRNA[link_index]))
-			shell("mv {link_index} {output.index}")
+			shell("mv {link_index} BWA_INDEX")
 #			shell("wget -q {link} && mv {link_index} {output.index}".format(link=RRNA[link_index]))
-			shell("bwa index {output.index}/{link_index}")
+			shell("bwa index {output.fasta}")
 	
 rule rRNA_contamination:
 	input:
