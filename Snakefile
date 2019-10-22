@@ -35,7 +35,7 @@ CPUS_PHIX = 15
 CPUS_TRIMMING = 5
 CPUS_STAR = 20
 CPUS_ARIA = 16
-CPUS_KRAKEN = 20
+CPUS_KRAKEN = 40
 CPUS_RNA = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
 #LIBS = ["SRR2121770"]
@@ -51,17 +51,12 @@ GENOME4PHIX = {
 	"PhiX" : "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
 }
 KRAKEN_DB = {
-	"minikraken_20171019_8GB" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
+	"minikraken_20171019_8GB.tgz" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
 }
 RRNA = {
 	"txid9606.fasta" : "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
 }
 rRNA_FILES = list(RRNA.keys())
-#print(rRNA_FILES)
-#shell("mkdir -p GENOME")
-#for file, link in GENOME4STAR.items():
-#	shell("curl -sS -L {link} -o GENOME/{file}")
-#	shell("gunzip GENOME/{file}")
 
 ####### Rules #######
 rule all:
@@ -202,9 +197,6 @@ rule phiX_genome:
 rule phiX_contamination:
 	input:
 		genome = rules.phiX_genome.output.genome,
-#		genome = expand("{genome_phix}/Illumina/RTA/Sequence/Bowtie2Index/genome", genome_phix = GENOME4PHIX.keys()),
-#		genome	= expand(rules.phiX_genome.output.genome + "Illumina/RTA/Sequence/Bowtie2Index/genome"),
-#		genome 	= rules.phiX_genome.output.genome + ["Illumina/RTA/Sequence/Bowtie2Index/genome"],
 		r1 	= "2.TRIMMED/{library}_forward_paired.fastq.gz",
                 r2 	= "2.TRIMMED/{library}_reverse_paired.fastq.gz"
 	message:
@@ -229,6 +221,7 @@ rule kraken_db:
 			shell("mkdir -p KRAKEN_DB")
 			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))	
 		#	shell("mv {link_index} {output.kraken_db}")
+		#	shell("echo KRAKEN_DB/{link_index}")
 			shell("tar -xz KRAKEN_DB/{link_index}")
 		#	shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
 
