@@ -1,11 +1,11 @@
 # RuNAs: RNAseq Pipeline
-![Rule Graph](images/rule-graph.png?raw=true "Title")
+![Rule Graph](images/rule-graph.png?raw=true "Rule Graph")
 ## Requirements
 -	Python 3.6+ (using Anaconda)
 
 ## Setup
 ```bash
-git clone https://github.com/villegar/runas
+git clone https://github.com/villegar/runas --branch v2
 cd runas
 conda env create -f environment.yml
 python download.genome.py human-genome.json
