@@ -56,6 +56,8 @@ KRAKEN_DB = {
 RRNA = {
 	"txid9606.fasta" : "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
 }
+rRNA_FILES = list(RRNA.keys())
+#print(rRNA_FILES)
 #shell("mkdir -p GENOME")
 #for file, link in GENOME4STAR.items():
 #	shell("curl -sS -L {link} -o GENOME/{file}")
@@ -79,18 +81,12 @@ rule all:
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
 		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
-#,
-		#"done.txt"
+
 rule reads:	
 	input:
 		reads = READS + "/{library}_{replicate}." + EXTENSION,
 		r1    = READS + "/{library}_1." + EXTENSION,
 		r2    = READS + "/{library}_2." + EXTENSION
-#		reads = expand(READS + "/{library}_{replicate}.fastq.gz", library=LIBS, replicate=[1, 2]),
-#		r1    = expand(READS + "/{library}_1.fastq.gz", library=LIBS),
-#		r2    = expand(READS + "/{library}_2.fastq.gz", library=LIBS)
-#	output:
-#		directory(READS)
 	message:
 		"Gathering reads"
 
@@ -222,7 +218,7 @@ rule phiX_contamination:
 
 rule kraken_db:
 	output:
-		kraken_db = directory("KRAKEN_DB")
+		kraken_db = directory(expand({"db"}, db=["KRAKEN_DB"]))
 	#	kraken_db = directory(expand("{db}", db = KRAKEN_DB.keys()))
 	message:
 		"Downloading Kraken DB"
@@ -230,10 +226,10 @@ rule kraken_db:
 		CPUS_ARIA
 	run:
 		for link_index in sorted(KRAKEN_DB.keys()):
-			shell("mkdir -p {output.kraken_db}")
+			shell("mkdir -p KRAKEN_DB")
 			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))	
 		#	shell("mv {link_index} {output.kraken_db}")
-			shell("tar -xz {output.kraken_db}/{link_index}")
+			shell("tar -xz KRAKEN_DB/{link_index}")
 		#	shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
 
 rule microbial_contamination:
@@ -253,7 +249,8 @@ rule microbial_contamination:
 
 rule rRNA_index:
 	output:
-		index = directory("BWA_INDEX")
+		#index = directory(expand("{bwa}", bwa=["BWA_INDEX"])),
+		fasta = directory(expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES))
 	message:
 		"Create rRNA index"
 	run:
@@ -268,7 +265,7 @@ rule rRNA_contamination:
 	input:
 		r1 = rules.trim_reads.output.forward_paired,
 		r2 = rules.trim_reads.output.reverse_paired,
-		index = rules.rRNA_index.output.index
+		index = rules.rRNA_index.output.fasta
 	output:
 		sam = "7.rRNA/{library}.rna.sam",
 		bam = "7.rRNA/{library}.rna.bam",
