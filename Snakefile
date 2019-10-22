@@ -27,7 +27,7 @@ def which(file):
 READS = "/gpfs/scratch/Classes/stat736/p53reads"
 PREFIX = "SRR"
 EXTENSION = "fastq.gz"
-SUFFIX = "_1" + EXTENSION
+SUFFIX = "_1." + EXTENSION
 CPUS_FASTQC = 3
 CPUS_PHIX = 15
 CPUS_TRIMMING = 5
@@ -220,14 +220,18 @@ rule phiX_contamination:
 
 rule kraken_db:
 	output:
-		kraken_db = directory(expand("{db}", db = KRAKEN_DB.keys()))
+		kraken_db = directory("KRAKEN_DB")
+	#	kraken_db = directory(expand("{db}", db = KRAKEN_DB.keys()))
 	message:
 		"Downloading Kraken DB"
 	threads:
 		CPUS_ARIA
 	run:
 		for link_index in sorted(KRAKEN_DB.keys()):
-			shell("aria2c -x {threads} -s {threads} {link} && tar -xz link_index".format(link=KRAKEN_DB[link_index]))	
+			shell("mkdir -p {output.kraken_db}")
+			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))	
+		#	shell("mv {link_index} {output.kraken_db}")
+			shell("tar -xz {output.kraken_db}/{link_index}")
 		#	shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
 
 rule microbial_contamination:
@@ -253,8 +257,10 @@ rule rRNA_index:
 	run:
 		for link_index in sorted(RRNA.keys()):
 			shell("mkdir -p {output.index}")
-			shell("wget -q -O {link} && mv {link_index} {output.index}".format(link=RRNA[link_index]))
-			shell("bwa index {link_index}")
+			shell("wget -q {link}".format(link=RRNA[link_index]))
+			shell("mv {link_index} {output.index}")
+#			shell("wget -q {link} && mv {link_index} {output.index}".format(link=RRNA[link_index]))
+			shell("bwa index {output.index}/{link_index}")
 	
 rule rRNA_contamination:
 	input:
