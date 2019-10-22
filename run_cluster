@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+snakemake -j 160 --cluster-config cluster.json --cluster "sbatch --partition={cluster.partition} -N {cluster.nodes} --ntasks-per-node {cluster.ntasks} -t {cluster.time}"
