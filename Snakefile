@@ -78,7 +78,7 @@ rule all:
 ##			star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
-		expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES),
+		#expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES),
 		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
 
 rule reads:	
@@ -199,19 +199,18 @@ rule phiX_contamination:
 
 rule kraken_db:
 	output:
-		kraken_db = directory(expand({"db"}, db=["KRAKEN_DB"]))
-	#	kraken_db = directory(expand("{db}", db = KRAKEN_DB.keys()))
+	#	kraken_db = directory("KRAKEN_DB")
+	#directory(expand({"db"}, db=["KRAKEN_DB"]))
+		kraken_db = directory(expand("KRAKEN_DB/{db}", db = KRAKEN_DB_FILENAMES))
 	message:
 		"Downloading Kraken DB"
 	threads:
 		CPUS_ARIA
 	run:
 		for link_index in sorted(KRAKEN_DB.keys()):
-			shell("mkdir -p KRAKEN_DB")
 			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))	
-		#	shell("mv {link_index} {output.kraken_db}")
-		#	shell("echo KRAKEN_DB/{link_index}")
-			shell("tar -xz KRAKEN_DB/{link_index}")
+			shell("tar -xzf KRAKEN_DB/{link_index} -C KRAKEN_DB")
+			shell("build_taxdb {output.kraken_db}/taxonomy/names.dmp {output.kraken_db}/taxonomy/nodes.dmp > {output.kraken_db}/taxDB")
 		#	shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
 
 rule microbial_contamination:
