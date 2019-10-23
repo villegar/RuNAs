@@ -132,7 +132,6 @@ rule fastqc_trimmed:
 rule genome_index:
 	input:
 		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
-#		genome_files = rules.download_genome.output.genome_files
 	output:
 		dir = directory("GENOME_INDEX")
 	message:
@@ -145,16 +144,12 @@ rule genome_index:
 rule star:
 	input:
 		genome = rules.genome_index.output.dir,
-#		r1 = "2.TRIMMED/{library}_forward_paired.fastq.gz",
-#		r2 = "2.TRIMMED/{library}_reverse_paired.fastq.gz"
 		r1 = rules.trim_reads.output.forward_paired,
 		r2 = rules.trim_reads.output.reverse_paired
 	output:
-#		"4.STAR/{library}_{star_file}"
 		unmapped_m81 = "4.STAR/{library}_Unmapped.out.mate1",
 		unmapped_m82 = "4.STAR/{library}_Unmapped.out.mate2",
 		aligned_bam  = "4.STAR/{library}_Aligned.sortedByCoord.out.bam"
-#		directory("4.STAR")
 	message:
 		"STAR alignment"
 	params:
@@ -178,8 +173,6 @@ rule phiX_contamination:
 		genome 	= rules.phiX_genome.output.genome,
 		r1	= rules.trim_reads.output.forward_paired,
                 r2 	= rules.trim_reads.output.reverse_paired
-		#r1 	= "2.TRIMMED/{library}_forward_paired.fastq.gz",
-                #r2 	= "2.TRIMMED/{library}_reverse_paired.fastq.gz"
 	message:
 		"PhiX contamination analysis"
 	output:
@@ -191,8 +184,6 @@ rule phiX_contamination:
 
 rule kraken_db:
 	output:
-	#	kraken_db = directory("KRAKEN_DB")
-	#directory(expand({"db"}, db=["KRAKEN_DB"]))
 		kraken_db = directory(expand("KRAKEN_DB/{db}", db = KRAKEN_DB_FILENAMES))
 	message:
 		"Downloading Kraken DB"
@@ -203,7 +194,6 @@ rule kraken_db:
 			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))	
 			shell("tar -xzf KRAKEN_DB/{link_index} -C KRAKEN_DB")
 			shell("build_taxdb {output.kraken_db}/taxonomy/names.dmp {output.kraken_db}/taxonomy/nodes.dmp > {output.kraken_db}/taxDB")
-		#	shell("wget -q -O - {link} | tar -xz".format(link=KRAKEN_DB[link_index]))
 
 rule microbial_contamination:
 	input:
@@ -222,8 +212,6 @@ rule microbial_contamination:
 
 rule rRNA_index:
 	output:
-		#index = directory(expand("{bwa}", bwa=["BWA_INDEX"])),
-		#fasta = "BWA_INDEX/{bwa_files}"
 		fasta = expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES)
 	message:
 		"Create rRNA index"
