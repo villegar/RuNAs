@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
 time snakemake -j 160  --latency-wait 1000 --cluster-config cluster.json --cluster "sbatch --job-name={cluster.name} --output={cluster.log} --partition={cluster.partition} -N {cluster.nodes} --ntasks-per-node {cluster.ntasks} -t {cluster.time}"
+# {cluster.ntasks} -t {cluster.time}"
