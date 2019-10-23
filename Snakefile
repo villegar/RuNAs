@@ -1,7 +1,6 @@
 ####### Libraries #######
 import glob
 import os
-#from snakemake.remote.FTP import RemoteProvider as FTPRemoteProvider
 
 ####### Util functions #######
 def filenames(path,prefix,suffix):
@@ -24,11 +23,12 @@ def which(file):
         return None
 
 ####### Global variables #######
+#configfile: "config.json"
 #READS = "/gpfs/scratch/Classes/stat736/p53reads"
-PREFIX = "SRR"
-#EXTENSION = "fastq.gz"
-READS = "/gpfs/scratch/Classes/stat736/walnutreads"
-EXTENSION = "fastq"
+PREFIX = config["reads"]["prefix"]
+READS = config["reads"]["path"]
+#READS = "/gpfs/scratch/Classes/stat736/walnutreads"
+EXTENSION = config["reads"]["extension"] #config["ReadsExtension"]#"fastq"
 SUFFIX = "_1." + EXTENSION
 CPUS_FASTQC = 3
 CPUS_PHIX = 15
@@ -40,25 +40,28 @@ CPUS_RNA = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
 #LIBS = ["SRR2121770"]
 #LIBS = ["SRR6768673"]
-#FTP = FTPRemoteProvider()
 ADAPTER = which("trimmomatic")
-GENOME4STAR = {
-	"GRCm38.primary_assembly.genome.fa.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
-	"gencode.vM22.annotation.gtf.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
-}
+GENOME4STAR = config["genome4star"]
+#GENOME4STAR = {
+#	"GRCm38.primary_assembly.genome.fa.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
+#	"gencode.vM22.annotation.gtf.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
+#}
 GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 
-GENOME4PHIX = {
-	"PhiX" : "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
-}
-KRAKEN_DB = {
-	"minikraken_20171019_8GB.tgz" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
-}
+GENOME4PHIX = config["genome4phiX"]
+#GENOME4PHIX = {
+#	"PhiX" : "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
+#}
+KRAKEN_DB = config["krakenDB"]
+#KRAKEN_DB = {
+#	"minikraken_20171019_8GB.tgz" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
+#}
 KRAKEN_DB_FILENAMES = filenames2(KRAKEN_DB.keys(),".tgz")
 #print(KRAKEN_DB_FILENAMES)
-RRNA = {
-	"txid9606.fasta" : "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
-}
+RRNA = config["rRNAref"]
+#RRNA = {
+#	"txid9606.fasta" : "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
+#}
 rRNA_FILES = list(RRNA.keys())
 
 ####### Rules #######
