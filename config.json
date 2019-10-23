@@ -1,0 +1,34 @@
+{
+    "genome4phiX":
+    {
+        "PhiX": 
+            "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
+    },
+
+    "genome4star":
+    {
+        "GRCm38.primary_assembly.genome.fa.gz": 
+            "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
+        "gencode.vM22.annotation.gtf.gz": 
+            "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
+    },
+
+    "krakenDB":
+    {
+        "minikraken_20171019_8GB.tgz": 
+            "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
+    },
+
+    "reads":
+    {
+        "extension": "fastq.gz",
+        "path": "/gpfs/scratch/Classes/stat736/p53reads",
+        "prefix": "SRR"
+    },
+
+    "rRNAref":
+    {
+        "txid9606.fasta": 
+            "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
+    }
+}
