@@ -69,16 +69,10 @@ rule all:
                         library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
 		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
-#		#expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES),
-#		#expand("GENOME_INDEX"),
-#		expand("4.STAR", library=LIBS),
-#		#expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam", library=LIBS)
 		expand("4.STAR/{library}_{star_file}", library=LIBS,
 			star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
-##			star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
-		#expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES),
 		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
 
 rule reads:	
@@ -92,8 +86,6 @@ rule reads:
 rule fastqc_raw:
 	input:
 		reads = rules.reads.input.reads
-		#, step  = rules.reads.output.step
-#		reads = READS + "/{library}_{end}.fastq.gz"
 	output:	
 		html = "1.QC.RAW/{library}_{end}_fastqc.html",
 		zip  = "1.QC.RAW/{library}_{end}_fastqc.zip"
@@ -107,8 +99,6 @@ rule fastqc_raw:
 rule trim_reads:
 	input:
 		adapter = os.path.join(ADAPTER,"../share/trimmomatic/adapters"),
-#		r1      = READS + "/{library}_1.fastq.gz",
-#		r2	= READS + "/{library}_2.fastq.gz"
 		r1 = rules.reads.input.r1,
 		r2 = rules.reads.input.r2
 	output:
