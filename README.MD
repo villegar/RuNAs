@@ -1,5 +1,5 @@
 
-# RN<sub>u</sub>As<sub>eq</sub> (&#5809;&#5794;&#5822;&#5800;&#5835;) */roonas/* Pipeline
+# R<sub>u</sub>NA-s<sub>eq</sub> (&#5809;&#5794;&#5822;&#5800;&#5835;) */roonas/* Pipeline
 
 ![Rule Graph](images/rule-graph.png?raw=true "Rule Graph")
 ## Requirements
