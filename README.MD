@@ -16,7 +16,7 @@ python download.genome.py human-genome.json
 ## Execution
 ### Single node
 ```bash
-snakemake -j CPUS # maximum numnber of CPUs available to Snakemake
+snakemake -j CPUS # maximum number of CPUs available to Snakemake
 ```
 
 ### Multi-node
