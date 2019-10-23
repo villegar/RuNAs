@@ -1,4 +1,4 @@
-name: STAT736
+name: RuNAs
 channels:
   - conda-forge
   - bioconda
