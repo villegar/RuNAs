@@ -35,7 +35,7 @@ CPUS_PHIX = 15
 CPUS_TRIMMING = 5
 CPUS_STAR = 20
 CPUS_ARIA = 16
-CPUS_KRAKEN = 40
+CPUS_KRAKEN = 20
 CPUS_RNA = 20
 LIBS = filenames(READS,PREFIX,SUFFIX)
 #LIBS = ["SRR2121770"]
@@ -137,7 +137,7 @@ rule genome_index:
 	message:
 		"Generate genome index for STAR"
 	threads: 
-		40
+		CPUS_STAR
 	shell:
 		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
 		
