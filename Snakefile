@@ -217,7 +217,7 @@ rule rRNA_index:
 		"Create rRNA index"
 	run:
 		for link_index in sorted(RRNA.keys()):
-			shell("mkdir -p BWA_INDEX")
+		#	shell("mkdir -p BWA_INDEX")
 			shell("wget -q {link}".format(link=RRNA[link_index]))
 			shell("mv {link_index} BWA_INDEX")
 #			shell("wget -q {link} && mv {link_index} {output.index}".format(link=RRNA[link_index]))
