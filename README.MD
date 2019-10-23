@@ -11,5 +11,5 @@ git clone https://github.com/villegar/runas --branch v2
 cd runas
 conda env create -f environment.yml
 python download.genome.py human-genome.json
-snakemake -j CPUS 
+snakemake -j CPUS # CPUS = maximum numnber of CPUs available to Snakemake
 ```
