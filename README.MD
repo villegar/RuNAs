@@ -26,9 +26,9 @@ snakemake -j JOBS  \ # maximum number of simultaneous jobs to spawn
           --cluster-config cluster.json \ # cluster configuration file
           --cluster "sbatch --job-name={cluster.name} 
                             --nodes={cluster.nodes} 
+                            --ntasks-per-node={cluster.ntasks} 
                             --output={cluster.log} 
                             --partition={cluster.partition} 
-                            --ntasks-per-node={cluster.ntasks} 
                             --time={cluster.time}"
 ```
 #### Alternatively
