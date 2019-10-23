@@ -64,7 +64,7 @@ rRNA_FILES = list(RRNA.keys())
 ####### Rules #######
 rule all:
 	input:
-		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
+		expand("1.QC.RAW/{library}_{end}_fastqc.{format}", library=LIBS, end=[1, 2], format=["html","zip"]),
 		expand("2.TRIMMED/{library}_{direction}_{mode}.fastq.gz",
                         library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
 		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
@@ -83,7 +83,7 @@ rule all:
 
 rule reads:	
 	input:
-		reads = READS + "/{library}_{replicate}." + EXTENSION,
+		reads = READS + "/{library}_{end}." + EXTENSION,
 		r1    = READS + "/{library}_1." + EXTENSION,
 		r2    = READS + "/{library}_2." + EXTENSION
 	message:
@@ -93,10 +93,10 @@ rule fastqc_raw:
 	input:
 		reads = rules.reads.input.reads
 		#, step  = rules.reads.output.step
-#		reads = READS + "/{library}_{replicate}.fastq.gz"
+#		reads = READS + "/{library}_{end}.fastq.gz"
 	output:	
-		html = "1.QC.RAW/{library}_{replicate}_fastqc.html",
-		zip  = "1.QC.RAW/{library}_{replicate}_fastqc.zip"
+		html = "1.QC.RAW/{library}_{end}_fastqc.html",
+		zip  = "1.QC.RAW/{library}_{end}_fastqc.zip"
 	message:
 		"FastQC on raw data"
 	threads:
@@ -185,9 +185,11 @@ rule phiX_genome:
 
 rule phiX_contamination:
 	input:
-		genome = rules.phiX_genome.output.genome,
-		r1 	= "2.TRIMMED/{library}_forward_paired.fastq.gz",
-                r2 	= "2.TRIMMED/{library}_reverse_paired.fastq.gz"
+		genome 	= rules.phiX_genome.output.genome,
+		r1	= rules.trim_reads.output.forward_paired,
+                r2 	= rules.trim_reads.output.reverse_paired
+		#r1 	= "2.TRIMMED/{library}_forward_paired.fastq.gz",
+                #r2 	= "2.TRIMMED/{library}_reverse_paired.fastq.gz"
 	message:
 		"PhiX contamination analysis"
 	output:
