@@ -1,7 +1,9 @@
-# RuNAs: RNAseq Pipeline
-![Rule Graph](images/rule-graph.png?raw=true "Rule Graph")
+
+# RuNAs (&#5809;&#5794;&#5822;&#5800;&#5835;): RN<sub>u</sub>As<sub>eq</sub> */roonas/* Pipeline
+
+![Rule Graph](images/rule-graph.svg?raw=true "Rule Graph")
 ## Requirements
--	Python 3.6+ (using Anaconda)
+-	Python 3.6+ (using [Ana](https://anaconda.org)([mini](https://docs.conda.io/en/latest/miniconda.html))conda)
 
 ## Setup
 ```bash
