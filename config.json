@@ -20,12 +20,12 @@
     },
     
     "_comment" : 
-	"Below READS section shows the configuration for a directory containing reads in the format: /{PATH}/SRR{LIBRARY}_1.fastq.gz",
+	"Below READS section shows the configuration for a directory containing reads in the format: /{PATH}/SRR{LIBRARY}_1.fastq",
     "reads":
     {
-        "extension": "fastq.gz",
+        "extension": "fastq",
         "forward_read_id": "1",
-        "path": "/gpfs/scratch/Classes/stat736/p53reads",
+        "path": "/gpfs/scratch/Classes/stat736/walnutreads",
         "prefix": "SRR"
     },
 
