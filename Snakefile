@@ -62,7 +62,8 @@ rule all:
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
 		#expand("4.STAR/{library}_{star_file}", library=LIBS,
 		#	star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
-		expand("readCounts.txt", library = LIBS),
+		#expand("readCounts.txt", library = LIBS),
+		"readCounts.txt",
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
 		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
