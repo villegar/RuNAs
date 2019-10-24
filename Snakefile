@@ -62,6 +62,7 @@ rule all:
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
 		#expand("4.STAR/{library}_{star_file}", library=LIBS,
 		#	star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
+		expand("readCounts.txt", library = LIBS),
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
 		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
@@ -150,6 +151,15 @@ rule star:
 	shell:
 		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
 
+rule count_reads:
+	input:
+		aligned = expand(rules.star.output.aligned_bam, library=LIBS),
+		genome = rules.genome_index.input.genome_files[1]
+	output:
+		readCounts = "readCounts.txt"
+	shell:
+		"featureCounts -a {input.genome} -o {output} {input.aligned}"
+		
 rule phiX_genome:
 	output:
 		genome = directory(expand("{genome_phix}", genome_phix = GENOME4PHIX.keys()))
