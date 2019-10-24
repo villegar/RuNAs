@@ -25,7 +25,7 @@ def main(argv):
             else:
                 print("File already downloaded")
             if(not Path(GENOME_DIR + "/" + Path(i).stem).exists()):
-                process = subprocess.Popen("mkdir -p " + GENOME_DIR + " && mv " + i + " " + GENOME_DIR + " && yes n | gunzip " + GENOME_DIR + "/" + i + " && rm " + GENOME_DIR + "/" + i, shell=True, stdout=subprocess.PIPE)
+                process = subprocess.Popen("mkdir -p " + GENOME_DIR + " && mv " + i + " " + GENOME_DIR + " && yes n | gunzip " + GENOME_DIR + "/" + i + " && rm -rf " + GENOME_DIR + "/" + i, shell=True, stdout=subprocess.PIPE)
                 output, error = process.communicate()
             print("Done")
     return 1
