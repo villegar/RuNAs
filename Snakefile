@@ -3,18 +3,20 @@ import glob
 import os
 
 ####### Util functions #######
-def filenames(path,prefix,suffix):
+def extractFilenames(fullnames,suffix):
+        names = []
+        for file in fullnames:
+            names.append(os.path.basename(file).split(suffix)[0])
+        return sorted(names)
+
+def findLibraries(path,prefix,suffix):
 	filenames_path = glob.glob(os.path.join(path,prefix) + "*" + suffix)
 	names = []
 	for file in filenames_path:
-		names.append(os.path.basename(file).split(suffix)[0])
+	    library = os.path.basename(file).split(suffix)[0]
+	    if(library not in names):
+		    names.append(library)
 	return sorted(names)
-
-def filenames2(paths,suffix):
-        names = []
-        for file in paths:
-                names.append(os.path.basename(file).split(suffix)[0])
-        return sorted(names)
 
 def which(file):
         for path in os.environ["PATH"].split(os.pathsep):
@@ -23,13 +25,14 @@ def which(file):
         return None
 
 ####### Global variables #######
-#configfile: "config.json"
-#READS = "/gpfs/scratch/Classes/stat736/p53reads"
+EXTENSION = config["reads"]["extension"]
 PREFIX = config["reads"]["prefix"]
 READS = config["reads"]["path"]
-#READS = "/gpfs/scratch/Classes/stat736/walnutreads"
-EXTENSION = config["reads"]["extension"] #config["ReadsExtension"]#"fastq"
-SUFFIX = "_1." + EXTENSION
+FORWARD_READ_ID = config["reads"]["forward_read_id"]
+SUFFIX = "_" + FORWARD_READ_ID + "." + EXTENSION
+LIBS = findLibraries(READS,PREFIX,SUFFIX)
+
+###### Multithread configuration #####
 CPUS_FASTQC = 3
 CPUS_PHIX = 15
 CPUS_TRIMMING = 5
@@ -37,31 +40,16 @@ CPUS_STAR = 20
 CPUS_ARIA = 16
 CPUS_KRAKEN = 20
 CPUS_RNA = 20
-LIBS = filenames(READS,PREFIX,SUFFIX)
-#LIBS = ["SRR2121770"]
-#LIBS = ["SRR6768673"]
-ADAPTER = which("trimmomatic")
-GENOME4STAR = config["genome4star"]
-#GENOME4STAR = {
-#	"GRCm38.primary_assembly.genome.fa.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
-#	"gencode.vM22.annotation.gtf.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
-#}
-GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
 
+ADAPTER = which("trimmomatic")
+
+####### Reference datasets #######
+GENOME4STAR = config["genome4star"]
+GENOME4STAR_FILENAMES = extractFilenames(GENOME4STAR.keys(),".gz")
 GENOME4PHIX = config["genome4phiX"]
-#GENOME4PHIX = {
-#	"PhiX" : "ftp://igenome:G3nom3s4u@ussd-ftp.illumina.com/PhiX/Illumina/RTA/PhiX_Illumina_RTA.tar.gz"
-#}
 KRAKEN_DB = config["krakenDB"]
-#KRAKEN_DB = {
-#	"minikraken_20171019_8GB.tgz" : "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
-#}
-KRAKEN_DB_FILENAMES = filenames2(KRAKEN_DB.keys(),".tgz")
-#print(KRAKEN_DB_FILENAMES)
+KRAKEN_DB_FILENAMES = extractFilenames(KRAKEN_DB.keys(),".tgz")
 RRNA = config["rRNAref"]
-#RRNA = {
-#	"txid9606.fasta" : "https://raw.githubusercontent.com/villegar/RuNAs/v2/txid9606.fasta"
-#}
 rRNA_FILES = list(RRNA.keys())
 
 ####### Rules #######
@@ -77,7 +65,7 @@ rule all:
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
 		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
-
+	
 rule reads:	
 	input:
 		reads = READS + "/{library}_{end}." + EXTENSION,
