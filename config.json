@@ -18,10 +18,13 @@
         "minikraken_20171019_8GB.tgz": 
             "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
     },
-
+    
+    "_comment" : 
+	"Below READS section shows the configuration for a directory containing reads in the format: /{PATH}/SRR{LIBRARY}_1.fastq.gz",
     "reads":
     {
         "extension": "fastq.gz",
+        "forward_read_id": "1",
         "path": "/gpfs/scratch/Classes/stat736/p53reads",
         "prefix": "SRR"
     },
