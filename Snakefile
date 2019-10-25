@@ -39,6 +39,7 @@ CPUS_TRIMMING = 5
 CPUS_STAR = 20
 CPUS_ARIA = 16
 CPUS_KRAKEN = 20
+CPUS_READCOUNTS = 5
 CPUS_RNA = 20
 
 ADAPTER = which("trimmomatic")
@@ -152,14 +153,16 @@ rule star:
 	shell:
 		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
 
-rule count_reads:
+rule read_counts:
 	input:
 		aligned = expand(rules.star.output.aligned_bam, library=LIBS),
 		genome = rules.genome_index.input.genome_files[1]
 	output:
 		readCounts = "readCounts.txt"
+	threads:
+		CPUS_READCOUNTS
 	shell:
-		"featureCounts -a {input.genome} -o {output} {input.aligned}"
+		"featureCounts -a {input.genome} -o {output} -T {threads} {input.aligned}"
 		
 rule phiX_genome:
 	output:
