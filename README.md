@@ -3,13 +3,24 @@
 
 ![Rule Graph](images/rule-graph.png?raw=true "Rule Graph")
 ## Requirements
+-	Bowtie2 2.3.5+
+-	BWA (alignment via Burrows-Wheeler transformation) 0.7.17+
+-	FastQC 0.11.8+
+-	FeatureCounts 1.6.4+
+-	KrakenUniq 0.5.8+
+-	MultiQC 1.7+
 -	Python 3.6+ (using [Ana](https://anaconda.org)([mini](https://docs.conda.io/en/latest/miniconda.html))conda)
+-	Samtools 1.9+
+-	Snakemake 5.7+
+-	STAR 2.7.3+
+-	Trimmomatic 0.39+
 
 ## Setup
 ```bash
 git clone https://github.com/villegar/runas --branch v2
 cd runas
 conda env create -f environment.yml
+conda activate RuNAs or source activate RuNAs
 python download.genome.py human-genome.json
 ```
 
