@@ -12,6 +12,7 @@
 -	Python 3.6+ (using [Ana](https://anaconda.org)([mini](https://docs.conda.io/en/latest/miniconda.html))conda)
 -	Samtools 1.9+
 -	Snakemake 5.7+
+-	SRA Toolkit 2.9.6+
 -	STAR 2.7.3+
 -	Trimmomatic 0.39+
 
