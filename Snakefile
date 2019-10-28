@@ -97,10 +97,12 @@ rule fastqc_raw:
 		zip  = "1.QC.RAW/{library}_{end}_fastqc.zip"
 	message:
 		"FastQC on raw data"
+	log:
+		"1.QC.RAW/{library}_{end}.log"
 	threads:
 		CPUS_FASTQC
 	shell:
-		"fastqc -q -o 1.QC.RAW -t {threads} {input}"
+		"fastqc -o 1.QC.RAW -t {threads} {input} 2> {log}"
 
 rule trim_reads:
 	input:
@@ -119,7 +121,7 @@ rule trim_reads:
 	threads:
 		CPUS_TRIMMING
 	shell:
-		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads SLIDINGWINDOW:4:20 TRAILING:3 MINLEN:36 > {log}"
+		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads SLIDINGWINDOW:4:20 TRAILING:3 MINLEN:36 2> {log}"
 
 rule fastqc_trimmed:
 	input:
@@ -132,10 +134,12 @@ rule fastqc_trimmed:
 		zip  = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
 	message:
 		"FastQC on trimmed data"
+	log:
+		"3.QC.TRIMMED/{library}_{direction}_{mode}.log"
 	threads:
 		CPUS_FASTQC
 	shell:
-                "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
+                "fastqc -o 3.QC.TRIMMED -t {threads} {input} 2> {log}"
 
 rule genome_index:
 	input:
@@ -144,10 +148,12 @@ rule genome_index:
 		dir = directory("GENOME_INDEX")
 	message:
 		"Generate genome index for STAR"
+	log:
+		"GENOME/genome_index.log"
 	threads: 
 		CPUS_STAR
 	shell:
-		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
+		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50 2> {log}"
 		
 rule star:
 	input:
@@ -160,12 +166,14 @@ rule star:
 		aligned_bam  = "4.STAR/{library}_Aligned.sortedByCoord.out.bam"
 	message:
 		"STAR alignment"
+	log:
+		"4.STAR/{library}.log"
 	params:
 		prefix = "4.STAR/{library}_"
 	threads:
 		CPUS_STAR
 	shell:
-		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
+		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx 2> {log}"
 
 rule read_counts:
 	input:
@@ -173,16 +181,20 @@ rule read_counts:
 		genome = rules.genome_index.input.genome_files[1]
 	output:
 		readCounts = "readCounts.txt"
+	log:
+		"read_counts.log"
 	threads:
 		CPUS_READCOUNTS
 	shell:
-		"featureCounts -a {input.genome} -o {output} -T {threads} {input.aligned}"
+		"featureCounts -a {input.genome} -o {output} -T {threads} {input.aligned} 2> {log}"
 		
 rule phiX_genome:
 	output:
 		genome = directory(expand("{genome_phix}", genome_phix = GENOME4PHIX.keys()))
 	message:
 		"Downloading PhiX genome reference"
+	log:
+		"phiX_genome.log"
 	run:
 		for link_index in sorted(GENOME4PHIX.keys()):
 			shell("wget -q -O - {link} | tar -xz".format(link=GENOME4PHIX[link_index]))
@@ -201,20 +213,22 @@ rule phiX_contamination:
 	threads:
 		CPUS_PHIX
 	shell:
-		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output} > {log}"	
+		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output} 2> {log}"	
 
 rule kraken_db:
 	output:
 		kraken_db = directory(expand("KRAKEN_DB/{db}", db = KRAKEN_DB_FILENAMES))
 	message:
 		"Downloading Kraken DB"
+	log:
+		"KRAKEN_DB/kraken_db.log"
 	threads:
 		CPUS_ARIA
 	run:
 		for link_index in sorted(KRAKEN_DB.keys()):
 			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))	
 			shell("tar -xzf KRAKEN_DB/{link_index} -C KRAKEN_DB")
-			shell("build_taxdb {output.kraken_db}/taxonomy/names.dmp {output.kraken_db}/taxonomy/nodes.dmp > {output.kraken_db}/taxDB")
+			shell("build_taxdb {output.kraken_db}/taxonomy/names.dmp {output.kraken_db}/taxonomy/nodes.dmp > {output.kraken_db}/taxDB 2> {log}")
 
 rule microbial_contamination:
 	input:
@@ -226,6 +240,8 @@ rule microbial_contamination:
 		tsv = "6.MICROBIAL/{library}.tsv"
 	message:
 		"Running KrakenSeq to find microbial contamination"
+#	log:
+#		"6.MICROBIAL/{library}.log"
 	threads:
 		CPUS_KRAKEN
 	shell:
@@ -236,13 +252,15 @@ rule rRNA_index:
 		fasta = expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES)
 	message:
 		"Create rRNA index"
+	log:
+		"rRNA_index.log"
 	run:
 		for link_index in sorted(RRNA.keys()):
 		#	shell("mkdir -p BWA_INDEX")
 			shell("wget -q {link}".format(link=RRNA[link_index]))
 			shell("mv {link_index} BWA_INDEX")
 #			shell("wget -q {link} && mv {link_index} {output.index}".format(link=RRNA[link_index]))
-			shell("bwa index {output.fasta}")
+			shell("bwa index {output.fasta} 2> {log}")
 	
 rule rRNA_contamination:
 	input:
@@ -250,36 +268,19 @@ rule rRNA_contamination:
 		r2 = rules.trim_reads.output.reverse_paired,
 		index = rules.rRNA_index.output.fasta
 	output:
-		sam = "7.rRNA/{library}.rna.sam",
-		bam = "7.rRNA/{library}.rna.bam",
-		out = "7.rRNA/{library}.rna.out"
+		sam = "7.rRNA/{library}.rRNA.sam",
+		bam = "7.rRNA/{library}.rRNA.bam",
+		unmapped_bam = "7.rRNA/{library}_unmapped.rRNA.bam",
+		out = "7.rRNA/{library}.rRNA.out"
 	message:
 		"Running BWA and Samtools to find rRNA contamination"
+#	log:
+#		"7.rRNA/{library}.log"
 	threads:
 		CPUS_RNA
 	run:
 		shell("bwa mem -t {threads} {input.index} {input.r1} {input.r2} > {output.sam}")
 		shell("samtools view -@ {threads} -bS -o {output.bam} {output.sam}")
 		shell("samtools flagstat -@ {threads} {output.bam} > {output.out}")
-		
-#rule finish:
-#	input: 
-#		rules.star.output
-#		rules.star.output,
-#		rules.fastqc_raw.output,
-#		rules.fastqc_trimmed.output
-#	output:
-#		"done.txt"
-#	shell:
-#		"echo 'Done'"
-
-#rule multiqc:
-#	input:
-#		"4.STAR"
-#		#"4.STAR/{library}_Aligned.sortedByCoord.out.bam"
-#	output:
-#		"4.STAR/STAR.report.html"
-#	shell:
-#		"multiqc -n {output} --flat {input}"
-
+		shell("samtools view -@ {threads} -u -f 12 -F 256 {output.bam} > {output.unmapped_bam}")
 
