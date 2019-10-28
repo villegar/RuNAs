@@ -69,6 +69,18 @@ rule all:
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
 		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
 	
+	output:
+		directory("MULTIQC")
+	run:
+		shell("multiqc -o MULTIQC/Report_FastQC_Raw.html 1.QC.RAW")
+		shell("multiqc -o MULTIQC/Report_Trimming.html 2.TRIMMED")
+		shell("multiqc -o MULTIQC/Report_FastQC_Trimmed.html 3.QC.TRIMMED")
+		shell("multiqc -o MULTIQC/Report_STAR.html 4.STAR")
+		#shell("multiqc -o MULTIQC/Report_PhiX *phiX*")
+		shell("multiqc -o MULTIQC/Report_PhiX.html 5.PHIX")
+		shell("multiqc -o MULTIQC/Report_Microbial.html *microbial_contamination*")
+		shell("multiqc -o MULTIQC/Report_rRNA.html 7.rRNA")
+
 rule reads:	
 	input:
 		reads = READS + "/{library}_{end}." + EXTENSION,
@@ -102,10 +114,12 @@ rule trim_reads:
 		reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
 	message:
 		"Trimming reads"
+	log:
+		"2.TRIMMED/{library}.log"
 	threads:
 		CPUS_TRIMMING
 	shell:
-		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36"
+		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads SLIDINGWINDOW:4:20 TRAILING:3 MINLEN:36 > {log}"
 
 rule fastqc_trimmed:
 	input:
@@ -182,10 +196,12 @@ rule phiX_contamination:
 		"PhiX contamination analysis"
 	output:
 		sam = "5.PHIX/{library}.sam"
+	log:
+		"5.PHIX/{library}.log"
 	threads:
 		CPUS_PHIX
 	shell:
-		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output}"	
+		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output} > {log}"	
 
 rule kraken_db:
 	output:
