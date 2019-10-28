@@ -1,0 +1,6 @@
+{
+	"GRCm38.primary_assembly.genome.fa.gz" : 
+		"ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
+	"gencode.vM22.annotation.gtf.gz" : 
+		"ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
+}

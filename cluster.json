@@ -1,0 +1,11 @@
+{
+    "__default__" :
+    {
+        "time" : "0-02:00:00",
+        "nodes" : 1,
+        "partition" : "all",
+	"ntasks": "{threads}",
+	"name": "RuNAs-{rule}",
+	"log": "RuNAs-{rule}-%J.out"
+    }
+}

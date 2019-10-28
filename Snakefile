@@ -1,22 +1,22 @@
-#LIBS=["SRR2121770","SRR2121771","SRR2121774"]
-
 ####### Libraries #######
 import glob
 import os
 
 ####### Util functions #######
-def filenames(path,prefix,suffix):
+def extractFilenames(fullnames,suffix):
+        names = []
+        for file in fullnames:
+            names.append(os.path.basename(file).split(suffix)[0])
+        return sorted(names)
+
+def findLibraries(path,prefix,suffix):
 	filenames_path = glob.glob(os.path.join(path,prefix) + "*" + suffix)
 	names = []
 	for file in filenames_path:
-		names.append(os.path.basename(file).split(suffix)[0])
+	    library = os.path.basename(file).split(suffix)[0]
+	    if(library not in names):
+		    names.append(library)
 	return sorted(names)
-
-def filenames2(paths,suffix):
-        names = []
-        for file in paths:
-                names.append(os.path.basename(file).split(suffix)[0])
-        return sorted(names)
 
 def which(file):
         for path in os.environ["PATH"].split(os.pathsep):
@@ -25,109 +25,253 @@ def which(file):
         return None
 
 ####### Global variables #######
-READS = "/gpfs/scratch/Classes/stat736/p53reads"
-PREFIX = "SRR"
-SUFFIX = "_1.fastq.gz"
-LIBS = filenames(READS,PREFIX,SUFFIX)
+EXTENSION = config["reads"]["extension"]
+PREFIX = config["reads"]["prefix"]
+READS = config["reads"]["path"]
+FORWARD_READ_ID = config["reads"]["forward_read_id"]
+SUFFIX = "_" + FORWARD_READ_ID + "." + EXTENSION
+LIBS = findLibraries(READS,PREFIX,SUFFIX)
+
+###### Multithread configuration #####
+CPUS_FASTQC = 3
+CPUS_PHIX = 15
+CPUS_TRIMMING = 5
+CPUS_STAR = 20
+CPUS_ARIA = 16
+CPUS_KRAKEN = 20
+CPUS_READCOUNTS = 5
+CPUS_RNA = 20
+
 ADAPTER = which("trimmomatic")
-GENOME4STAR = {
-	"GRCm38.primary_assembly.genome.fa.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/GRCm38.primary_assembly.genome.fa.gz",
-	"gencode.vM22.annotation.gtf.gz" : "ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M22/gencode.vM22.annotation.gtf.gz"
-}
-GENOME4STAR_FILENAMES = filenames2(GENOME4STAR.keys(),".gz")
+
+####### Reference datasets #######
+GENOME4STAR = config["genome4star"]
+GENOME4STAR_FILENAMES = extractFilenames(GENOME4STAR.keys(),".gz")
+GENOME4PHIX = config["genome4phiX"]
+KRAKEN_DB = config["krakenDB"]
+KRAKEN_DB_FILENAMES = extractFilenames(KRAKEN_DB.keys(),".tgz")
+RRNA = config["rRNAref"]
+rRNA_FILES = list(RRNA.keys())
 
 ####### Rules #######
 rule all:
 	input:
-		expand("1.QC.RAW/{library}_{replicate}_fastqc.{format}", library=LIBS, replicate=[1, 2], format=["html","zip"]),
-		expand("2.TRIMMED/{library}_{direction}_{mode}.fastq.gz",
-                        library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-                expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
+		expand("1.QC.RAW/{library}_{end}_fastqc.{format}", library=LIBS, end=[1, 2], format=["html","zip"]),
+		#expand("2.TRIMMED/{library}_{direction}_{mode}.fastq.gz",
+                #        library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
+		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
-		#expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES),
-		#expand("GENOME_INDEX"),
-		expand("4.STAR/{library}_Aligned.sortedByCoord.out.bam", library=LIBS)
-		#expand("4.STAR/{library}_{star_file}",library=LIBS,
-		#	star_file=["Aligned.sortedByCoord.out.bam","Aligned.sortedByCoord.out.bam.bai","Log.final.out","Log.out","Log.progress.out","SJ.out.tab","Unmapped.out.mate1","Unmapped.out.mate2"])
-		#expand("4.STAR/STAR.report.html", library = LIBS)
+		#expand("4.STAR/{library}_{star_file}", library=LIBS,
+		#	star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
+		#expand("readCounts.txt", library = LIBS),
+		"readCounts.txt",
+		expand("5.PHIX/{library}.sam", library=LIBS),
+		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
+		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
+	
+	output:
+		directory("MULTIQC")
+	run:
+		shell("multiqc -o MULTIQC/Report_FastQC_Raw.html 1.QC.RAW")
+		shell("multiqc -o MULTIQC/Report_Trimming.html 2.TRIMMED")
+		shell("multiqc -o MULTIQC/Report_FastQC_Trimmed.html 3.QC.TRIMMED")
+		shell("multiqc -o MULTIQC/Report_STAR.html 4.STAR")
+		#shell("multiqc -o MULTIQC/Report_PhiX *phiX*")
+		shell("multiqc -o MULTIQC/Report_PhiX.html 5.PHIX")
+		shell("multiqc -o MULTIQC/Report_Microbial.html *microbial_contamination*")
+		shell("multiqc -o MULTIQC/Report_rRNA.html 7.rRNA")
+
+rule reads:	
+	input:
+		reads = READS + "/{library}_{end}." + EXTENSION,
+		r1    = READS + "/{library}_1." + EXTENSION,
+		r2    = READS + "/{library}_2." + EXTENSION
+	message:
+		"Gathering reads"
 
 rule fastqc_raw:
 	input:
-		"reads/{library}_{replicate}.fastq.gz"
-#.format(library=LIBS, replicate=[1, 2])
-		#r1 = "reads/{library}_1.fastq.gz",
-		#r2 = "reads/{library}_2.fastq.gz"
+		reads = rules.reads.input.reads
 	output:	
-		"1.QC.RAW/{library}_{replicate}_fastqc.{format}"
-#.format(library=LIBS, replicate=[1, 2], format=["html","zip"])
-	#	"1.QC.RAW/{library}_{replicate}_fastqc.html",
-	#	"1.QC.RAW/{library}_{replicate}_fastqc.zip"
+		html = "1.QC.RAW/{library}_{end}_fastqc.html",
+		zip  = "1.QC.RAW/{library}_{end}_fastqc.zip"
+	message:
+		"FastQC on raw data"
+	threads:
+		CPUS_FASTQC
 	shell:
 		"fastqc -q -o 1.QC.RAW -t {threads} {input}"
 
-rule reads:
+rule trim_reads:
 	input:
 		adapter = os.path.join(ADAPTER,"../share/trimmomatic/adapters"),
-		r1 = "reads/{library}_1.fastq.gz",
-                r2 = "reads/{library}_2.fastq.gz"
+		r1 = rules.reads.input.r1,
+		r2 = rules.reads.input.r2
+	output:
+		forward_paired   = "2.TRIMMED/{library}_forward_paired.fastq.gz",
+		forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
+		reverse_paired   = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
+		reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
+	message:
+		"Trimming reads"
 	log:
 		"2.TRIMMED/{library}.log"
-	output:
-		forward_paired = "2.TRIMMED/{library}_forward_paired.fastq.gz",
-		forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
-		reverse_paired = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
-                reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
+	threads:
+		CPUS_TRIMMING
 	shell:
-		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads LEADING:3 TRAILING:3 MINLEN:36"
+		"trimmomatic PE -threads {threads} {input.r1} {input.r2} {output.forward_paired} {output.forward_unpaired} {output.reverse_paired} {output.reverse_unpaired} ILLUMINACLIP:{input.adapter}/TruSeq3-PE-2.fa:2:30:10:2:keepBothReads SLIDINGWINDOW:4:20 TRAILING:3 MINLEN:36 > {log}"
 
 rule fastqc_trimmed:
 	input:
-		"2.TRIMMED/{library}_{direction}_{mode}.fastq.gz"
-		#forward_paired = "2.TRIMMED/{library}_forward_paired.fastq.gz",
-                #forward_unpaired = "2.TRIMMED/{library}_forward_unpaired.fastq.gz",
-                #reverse_paired = "2.TRIMMED/{library}_reverse_paired.fastq.gz",
-                #reverse_unpaired = "2.TRIMMED/{library}_reverse_unpaired.fastq.gz"
+		rules.trim_reads.output.forward_paired,
+		rules.trim_reads.output.forward_unpaired,
+		rules.trim_reads.output.reverse_paired,
+		rules.trim_reads.output.reverse_unpaired
 	output:
-                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
-                "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
+		html = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.html",
+		zip  = "3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.zip"
+	message:
+		"FastQC on trimmed data"
+	threads:
+		CPUS_FASTQC
 	shell:
                 "fastqc -q -o 3.QC.TRIMMED -t {threads} {input}"
 
-rule download_genome:
-	output:
-		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
-		#"GENOME/{genome_file}"
-		#expand("GENOME/{file}", file = GENOME4STAR.keys())
-	run:
-		for link_index in sorted(GENOME4STAR.keys()):
-            		shell("wget -q {link} -O GENOME/{file}".format(link=GENOME4STAR[link_index], file=link_index))
-			shell("gunzip GENOME/{file}".format(file=link_index))
-
 rule genome_index:
 	input:
-		genome_files = rules.download_genome.output.genome_files
-		##"GENOME/{genome_file}"
-		#genome_files = expand("GENOME/{file}", file = GENOME4STAR_FILENAMES)
+		genome_files = expand("GENOME/{genome_file}", genome_file = GENOME4STAR_FILENAMES)
 	output:
-	#	dir = expand("GENOME_INDEX")
 		dir = directory("GENOME_INDEX")
+	message:
+		"Generate genome index for STAR"
+	threads: 
+		CPUS_STAR
 	shell:
 		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50"
 		
 rule star:
 	input:
 		genome = rules.genome_index.output.dir,
-	#	genome = "GENOME_INDEX",
-		r1 = "2.TRIMMED/{library}_forward_paired.fastq.gz",
-		r2 = "2.TRIMMED/{library}_reverse_paired.fastq.gz"
+		r1 = rules.trim_reads.output.forward_paired,
+		r2 = rules.trim_reads.output.reverse_paired
 	output:
-	#	directory("4.STAR")
-		"4.STAR/{library}_Aligned.sortedByCoord.out.bam"
-	#	prefix = "{library}_Aligned.sortedByCoord.out.bam"
+		unmapped_m81 = "4.STAR/{library}_Unmapped.out.mate1",
+		unmapped_m82 = "4.STAR/{library}_Unmapped.out.mate2",
+		aligned_bam  = "4.STAR/{library}_Aligned.sortedByCoord.out.bam"
+	message:
+		"STAR alignment"
 	params:
-		out_prefix = "4.STAR/${library}"
+		prefix = "4.STAR/{library}_"
+	threads:
+		CPUS_STAR
 	shell:
-		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.out_prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
+		"STAR --runThreadN {threads} --genomeDir {input.genome} --readFilesIn {input.r1} {input.r2} --readFilesCommand gunzip -c --outFilterIntronMotifs RemoveNoncanonical --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outReadsUnmapped  Fastx"
+
+rule read_counts:
+	input:
+		aligned = expand(rules.star.output.aligned_bam, library=LIBS),
+		genome = rules.genome_index.input.genome_files[1]
+	output:
+		readCounts = "readCounts.txt"
+	threads:
+		CPUS_READCOUNTS
+	shell:
+		"featureCounts -a {input.genome} -o {output} -T {threads} {input.aligned}"
+		
+rule phiX_genome:
+	output:
+		genome = directory(expand("{genome_phix}", genome_phix = GENOME4PHIX.keys()))
+	message:
+		"Downloading PhiX genome reference"
+	run:
+		for link_index in sorted(GENOME4PHIX.keys()):
+			shell("wget -q -O - {link} | tar -xz".format(link=GENOME4PHIX[link_index]))
+
+rule phiX_contamination:
+	input:
+		genome 	= rules.phiX_genome.output.genome,
+		r1	= rules.trim_reads.output.forward_paired,
+                r2 	= rules.trim_reads.output.reverse_paired
+	message:
+		"PhiX contamination analysis"
+	output:
+		sam = "5.PHIX/{library}.sam"
+	log:
+		"5.PHIX/{library}.log"
+	threads:
+		CPUS_PHIX
+	shell:
+		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output} > {log}"	
+
+rule kraken_db:
+	output:
+		kraken_db = directory(expand("KRAKEN_DB/{db}", db = KRAKEN_DB_FILENAMES))
+	message:
+		"Downloading Kraken DB"
+	threads:
+		CPUS_ARIA
+	run:
+		for link_index in sorted(KRAKEN_DB.keys()):
+			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))	
+			shell("tar -xzf KRAKEN_DB/{link_index} -C KRAKEN_DB")
+			shell("build_taxdb {output.kraken_db}/taxonomy/names.dmp {output.kraken_db}/taxonomy/nodes.dmp > {output.kraken_db}/taxDB")
+
+rule microbial_contamination:
+	input:
+		unmapped_m81 	= rules.star.output.unmapped_m81,
+		unmapped_m82 	= rules.star.output.unmapped_m82,
+		kraken_db	= rules.kraken_db.output.kraken_db
+	output:
+		out = "6.MICROBIAL/{library}.out",
+		tsv = "6.MICROBIAL/{library}.tsv"
+	message:
+		"Running KrakenSeq to find microbial contamination"
+	threads:
+		CPUS_KRAKEN
+	shell:
+		"krakenuniq --preload --db {input.kraken_db} --threads {threads} --paired --report-file {output.tsv} --fastq-input {input.unmapped_m81} {input.unmapped_m82} > {output.out}"
+
+rule rRNA_index:
+	output:
+		fasta = expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES)
+	message:
+		"Create rRNA index"
+	run:
+		for link_index in sorted(RRNA.keys()):
+		#	shell("mkdir -p BWA_INDEX")
+			shell("wget -q {link}".format(link=RRNA[link_index]))
+			shell("mv {link_index} BWA_INDEX")
+#			shell("wget -q {link} && mv {link_index} {output.index}".format(link=RRNA[link_index]))
+			shell("bwa index {output.fasta}")
+	
+rule rRNA_contamination:
+	input:
+		r1 = rules.trim_reads.output.forward_paired,
+		r2 = rules.trim_reads.output.reverse_paired,
+		index = rules.rRNA_index.output.fasta
+	output:
+		sam = "7.rRNA/{library}.rna.sam",
+		bam = "7.rRNA/{library}.rna.bam",
+		out = "7.rRNA/{library}.rna.out"
+	message:
+		"Running BWA and Samtools to find rRNA contamination"
+	threads:
+		CPUS_RNA
+	run:
+		shell("bwa mem -t {threads} {input.index} {input.r1} {input.r2} > {output.sam}")
+		shell("samtools view -@ {threads} -bS -o {output.bam} {output.sam}")
+		shell("samtools flagstat -@ {threads} {output.bam} > {output.out}")
+		
+#rule finish:
+#	input: 
+#		rules.star.output
+#		rules.star.output,
+#		rules.fastqc_raw.output,
+#		rules.fastqc_trimmed.output
+#	output:
+#		"done.txt"
+#	shell:
+#		"echo 'Done'"
 
 #rule multiqc:
 #	input:
