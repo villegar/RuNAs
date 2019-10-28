@@ -6,6 +6,6 @@
         "partition" : "all",
 	"ntasks": "{threads}",
 	"name": "RuNAs-{rule}",
-	"log": "RuNAs-{rule}-%J.out"
+	"log": "RuNAs-{rule}-%J.log"
     }
 }
