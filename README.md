@@ -3,6 +3,7 @@
 
 ![Rule Graph](images/rule-graph.png?raw=true "Rule Graph")
 ## Requirements
+-	BEDtools 2.29+
 -	Bowtie2 2.3.5+
 -	BWA (alignment via Burrows-Wheeler transformation) 0.7.17+
 -	FastQC 0.11.8+
@@ -18,7 +19,7 @@
 
 ## Setup
 ```bash
-git clone https://github.com/villegar/runas --branch v2
+git clone https://github.com/villegar/runas
 cd runas
 conda env create -f environment.yml
 conda activate RuNAs or source activate RuNAs
@@ -60,7 +61,7 @@ bash run_cluster &> log &
         "partition" : "compute",
 	"ntasks": "{threads}",
 	"name": "RuNAs-{rule}",
-	"log": "RuNAS-{rule}-%J.out"
+	"log": "RuNAS-{rule}-%J.log"
     }
 }
 ```
@@ -87,7 +88,9 @@ bash run_cluster &> log &
         "minikraken_20171019_8GB.tgz": 
             "https://ccb.jhu.edu/software/kraken/dl/minikraken_20171019_8GB.tgz"
     },
-
+    "_comment" :
+        "Below READS section shows the configuration for a directory containing reads in the format:
+	/{PATH}/SRR{LIBRARY}_1.fastq",
     "reads":
     {
         "extension": "fastq.gz",
