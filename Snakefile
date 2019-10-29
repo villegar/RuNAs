@@ -72,16 +72,21 @@ rule all:
 		expand("9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.{format}", library=LIBS, end=[1, 2], format=["html","zip"])
 	
 	output:
-		directory("MULTIQC")
+#		directory(expand("{dir}", dir=["0.LOGS","10.MULTIQC"]))
+		logs 	= directory("0.LOGS"),
+		reports	= directory("10.MULTIQC")
 	run:
-		shell("multiqc -o MULTIQC/Report_FastQC_Raw.html 1.QC.RAW")
-		shell("multiqc -o MULTIQC/Report_Trimming.html 2.TRIMMED")
-		shell("multiqc -o MULTIQC/Report_FastQC_Trimmed.html 3.QC.TRIMMED")
-		shell("multiqc -o MULTIQC/Report_STAR.html 4.STAR")
-		#shell("multiqc -o MULTIQC/Report_PhiX *phiX*")
-		shell("multiqc -o MULTIQC/Report_PhiX.html 5.PHIX")
-		shell("multiqc -o MULTIQC/Report_Microbial.html *microbial_contamination*")
-		shell("multiqc -o MULTIQC/Report_rRNA.html 7.rRNA")
+		shell("multiqc -o {output.reports} -n 1.Report_FastQC_Raw.html -d 1.QC.RAW")
+		shell("multiqc -o {output.reports} -n 2.Report_Trimming.html -d 2.TRIMMED")
+		shell("multiqc -o {output.reports} -n 3.Report_FastQC_Trimmed.html -d 3.QC.TRIMMED")
+		shell("multiqc -o {output.reports} -n 4.Report_STAR.html -d 4.STAR")
+		#shell("multiqc -o {output.reports} -n Report_PhiX *phiX*")
+		shell("multiqc -o {output.reports} -n 5.Report_PhiX.html -d 5.PHIX")
+		shell("multiqc -o {output.reports} -n 6.Report_Microbial.html -d 6.MICROBIAL") #*microbial_contamination*")
+		shell("multiqc -o {output.reports} -n 7.Report_rRNA.html -d 7.rRNA")
+		shell("multiqc -o {output.reports} -n 8.Report_rRNA_free.html -d 8.rRNA.FREE.READS")
+		shell("multiqc -o {output.reports} -n 9.Report_FastQC_rRNA_free.html -d 9.QC.rRNA.FREE.READS")
+		shell("mkdir -p {output.logs} && mv *.log {output.logs}")
 
 rule reads:	
 	input:
@@ -292,8 +297,10 @@ rule trim_rRNA_contamination:
 	output:
 		r1 = "8.rRNA.FREE.READS/{library}_1.fastq",
 		r2 = "8.rRNA.FREE.READS/{library}_2.fastq"
+	log:
+		"8.rRNA.FREE.READS/{library}.log"
 	shell:
-		"bedtools bamtofastq -i {input} -fq {output.r1} -fq2 {output.r2}"
+		"bedtools bamtofastq -i {input} -fq {output.r1} -fq2 {output.r2} 2> {log}"
 
 rule fastqc_trimmed_rRNA:
 	input:
