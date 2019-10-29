@@ -3,6 +3,7 @@
 
 ![Rule Graph](images/rule-graph.png?raw=true "Rule Graph")
 ## Requirements
+-	Aria2c 1.34.0+
 -	BEDtools 2.29+
 -	Bowtie2 2.3.5+
 -	BWA (alignment via Burrows-Wheeler transformation) 0.7.17+
