@@ -68,7 +68,8 @@ rule all:
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
 		#expand("7.rRNA/{library}.rRNA.{format}", library=LIBS, format=["bam","sam","out"]),
-		expand("8.rRNA_free_reads/{library}_1.fastq", library=LIBS)
+		#expand("8.rRNA.FREE.READS/{library}_{end}.fastq", library=LIBS, end=[1, 2]),
+		expand("9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.{format}", library=LIBS, end=[1, 2], format=["html","zip"])
 	
 	output:
 		directory("MULTIQC")
@@ -289,7 +290,24 @@ rule trim_rRNA_contamination:
 	input:
 		unmapped_bam = rules.rRNA_contamination.output.unmapped_bam
 	output:
-		r1 = "8.rRNA_free_reads/{library}_1.fastq",
-		r2 = "8.rRNA_free_reads/{library}_2.fastq"
+		r1 = "8.rRNA.FREE.READS/{library}_1.fastq",
+		r2 = "8.rRNA.FREE.READS/{library}_2.fastq"
 	shell:
 		"bedtools bamtofastq -i {input} -fq {output.r1} -fq2 {output.r2}"
+
+rule fastqc_trimmed_rRNA:
+	input:
+		r1 = rules.trim_rRNA_contamination.output.r1,
+		r2 = rules.trim_rRNA_contamination.output.r2
+	output:
+		html = "9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.html",
+		zip  = "9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.zip"
+	message:
+		"FastQC on reads without rRNA contamination"
+	log:
+		"9.QC.rRNA.FREE.READS/{library}_{end}.log"
+	threads:
+		CPUS_FASTQC
+	shell:
+		"fastqc -o 9.QC.rRNA.FREE.READS -t {threads} {input} 2> {log}"
+
