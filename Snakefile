@@ -158,12 +158,74 @@ rule genome_index:
 		CPUS_STAR
 	shell:
 		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50 2> {log}"
+
+rule rRNA_index:
+	output:
+		fasta = expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES)
+	message:
+		"Create rRNA index"
+	log:
+		"rRNA_index.log"
+	run:
+		for link_index in sorted(RRNA.keys()):
+			shell("wget -q {link}".format(link=RRNA[link_index]))
+			shell("mv {link_index} BWA_INDEX")
+			shell("bwa index {output.fasta} 2> {log}")
+	
+rule rRNA_contamination:
+	input:
+		r1 = rules.trim_reads.output.forward_paired,
+		r2 = rules.trim_reads.output.reverse_paired,
+		index = rules.rRNA_index.output.fasta
+	output:
+		sam = "7.rRNA/{library}.rRNA.sam",
+		bam = "7.rRNA/{library}.rRNA.bam",
+		unmapped_bam = "7.rRNA/{library}_unmapped.rRNA.bam",
+		out = "7.rRNA/{library}.rRNA.out"
+	message:
+		"Running BWA and Samtools to find rRNA contamination"
+	threads:
+		CPUS_RNA
+	run:
+		shell("bwa mem -t {threads} {input.index} {input.r1} {input.r2} > {output.sam}")
+		shell("samtools view -@ {threads} -bS -o {output.bam} {output.sam}")
+		shell("samtools flagstat -@ {threads} {output.bam} > {output.out}")
+		shell("samtools view -@ {threads} -u -f 12 -F 256 {output.bam} > {output.unmapped_bam}")
+
+rule trim_rRNA_contamination:
+	input:
+		unmapped_bam = rules.rRNA_contamination.output.unmapped_bam
+	output:
+		r1 = "8.rRNA.FREE.READS/{library}_1.fastq",
+		r2 = "8.rRNA.FREE.READS/{library}_2.fastq"
+	log:
+		"8.rRNA.FREE.READS/{library}.log"
+	shell:
+		"bedtools bamtofastq -i {input} -fq {output.r1} -fq2 {output.r2} 2> {log}"
+
+rule fastqc_trimmed_rRNA:
+	input:
+		r1 = rules.trim_rRNA_contamination.output.r1,
+		r2 = rules.trim_rRNA_contamination.output.r2
+	output:
+		html = "9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.html",
+		zip  = "9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.zip"
+	message:
+		"FastQC on reads without rRNA contamination"
+	log:
+		"9.QC.rRNA.FREE.READS/{library}_{end}.log"
+	threads:
+		CPUS_FASTQC
+	shell:
+		"fastqc -o 9.QC.rRNA.FREE.READS -t {threads} {input} 2> {log}"
 		
 rule star:
 	input:
 		genome = rules.genome_index.output.dir,
-		r1 = rules.trim_reads.output.forward_paired,
-		r2 = rules.trim_reads.output.reverse_paired
+		r1 = rules.trim_rRNA_contamination.output.r1,
+		r2 = rules.trim_rRNA_contamination.output.r2
+#		r1 = rules.trim_reads.output.forward_paired,
+#		r2 = rules.trim_reads.output.reverse_paired
 	output:
 		unmapped_m81 = "4.STAR/{library}_Unmapped.out.mate1",
 		unmapped_m82 = "4.STAR/{library}_Unmapped.out.mate2",
@@ -250,64 +312,4 @@ rule microbial_contamination:
 		CPUS_KRAKEN
 	shell:
 		"krakenuniq --preload --db {input.kraken_db} --threads {threads} --paired --report-file {output.tsv} --fastq-input {input.unmapped_m81} {input.unmapped_m82} > {output.out}"
-
-rule rRNA_index:
-	output:
-		fasta = expand("{bwa}/{file}", bwa=["BWA_INDEX"],file=rRNA_FILES)
-	message:
-		"Create rRNA index"
-	log:
-		"rRNA_index.log"
-	run:
-		for link_index in sorted(RRNA.keys()):
-			shell("wget -q {link}".format(link=RRNA[link_index]))
-			shell("mv {link_index} BWA_INDEX")
-			shell("bwa index {output.fasta} 2> {log}")
-	
-rule rRNA_contamination:
-	input:
-		r1 = rules.trim_reads.output.forward_paired,
-		r2 = rules.trim_reads.output.reverse_paired,
-		index = rules.rRNA_index.output.fasta
-	output:
-		sam = "7.rRNA/{library}.rRNA.sam",
-		bam = "7.rRNA/{library}.rRNA.bam",
-		unmapped_bam = "7.rRNA/{library}_unmapped.rRNA.bam",
-		out = "7.rRNA/{library}.rRNA.out"
-	message:
-		"Running BWA and Samtools to find rRNA contamination"
-	threads:
-		CPUS_RNA
-	run:
-		shell("bwa mem -t {threads} {input.index} {input.r1} {input.r2} > {output.sam}")
-		shell("samtools view -@ {threads} -bS -o {output.bam} {output.sam}")
-		shell("samtools flagstat -@ {threads} {output.bam} > {output.out}")
-		shell("samtools view -@ {threads} -u -f 12 -F 256 {output.bam} > {output.unmapped_bam}")
-
-rule trim_rRNA_contamination:
-	input:
-		unmapped_bam = rules.rRNA_contamination.output.unmapped_bam
-	output:
-		r1 = "8.rRNA.FREE.READS/{library}_1.fastq",
-		r2 = "8.rRNA.FREE.READS/{library}_2.fastq"
-	log:
-		"8.rRNA.FREE.READS/{library}.log"
-	shell:
-		"bedtools bamtofastq -i {input} -fq {output.r1} -fq2 {output.r2} 2> {log}"
-
-rule fastqc_trimmed_rRNA:
-	input:
-		r1 = rules.trim_rRNA_contamination.output.r1,
-		r2 = rules.trim_rRNA_contamination.output.r2
-	output:
-		html = "9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.html",
-		zip  = "9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.zip"
-	message:
-		"FastQC on reads without rRNA contamination"
-	log:
-		"9.QC.rRNA.FREE.READS/{library}_{end}.log"
-	threads:
-		CPUS_FASTQC
-	shell:
-		"fastqc -o 9.QC.rRNA.FREE.READS -t {threads} {input} 2> {log}"
 
