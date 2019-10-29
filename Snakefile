@@ -67,7 +67,8 @@ rule all:
 		"readCounts.txt",
 		expand("5.PHIX/{library}.sam", library=LIBS),
 		expand("6.MICROBIAL/{library}.{format}", library=LIBS, format=["out","tsv"]),
-		expand("7.rRNA/{library}.rna.{format}", library=LIBS, format=["bam","sam","out"])
+		#expand("7.rRNA/{library}.rRNA.{format}", library=LIBS, format=["bam","sam","out"]),
+		expand("8.rRNA_free_reads/{library}_1.fastq", library=LIBS)
 	
 	output:
 		directory("MULTIQC")
@@ -284,3 +285,11 @@ rule rRNA_contamination:
 		shell("samtools flagstat -@ {threads} {output.bam} > {output.out}")
 		shell("samtools view -@ {threads} -u -f 12 -F 256 {output.bam} > {output.unmapped_bam}")
 
+rule trim_rRNA_contamination:
+	input:
+		unmapped_bam = rules.rRNA_contamination.output.unmapped_bam
+	output:
+		r1 = "8.rRNA_free_reads/{library}_1.fastq",
+		r2 = "8.rRNA_free_reads/{library}_2.fastq"
+	shell:
+		"bedtools bamtofastq -i {input} -fq {output.r1} -fq2 {output.r2}"
