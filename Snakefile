@@ -269,7 +269,7 @@ rule phiX_contamination:
 	input:
 		genome 	= rules.phiX_genome.output.genome,
 		r1	= rules.trim_reads.output.forward_paired,
-        r2 	= rules.trim_reads.output.reverse_paired
+	        r2 	= rules.trim_reads.output.reverse_paired
 	message:
 		"PhiX contamination analysis"
 	output:
