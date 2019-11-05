@@ -50,8 +50,8 @@ GENOME4STAR_FILENAMES = extractFilenames(GENOME4STAR.keys(),".gz")
 GENOME4PHIX = config["genome4phiX"]
 KRAKEN_DB = config["krakenDB"]
 KRAKEN_DB_FILENAMES = extractFilenames(KRAKEN_DB.keys(),".tgz")
-RRNA = config["rRNAref"]
-rRNA_FILES = list(RRNA.keys())
+rRNA = config["rRNAref"]
+rRNA_FILES = list(rRNA.keys())
 
 ####### Rules #######
 rule all:
@@ -59,7 +59,7 @@ rule all:
 		expand("1.QC.RAW/{library}_{end}_fastqc.{format}", library=LIBS, end=[1, 2], format=["html","zip"]),
 		#expand("2.TRIMMED/{library}_{direction}_{mode}.fastq.gz",
                 #        library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"]),
-		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}", 
+		expand("3.QC.TRIMMED/{library}_{direction}_{mode}_fastqc.{format}",
 			library=LIBS, direction=["forward","reverse"], mode=["paired","unpaired"], format=["html","zip"]),
 		#expand("4.STAR/{library}_{star_file}", library=LIBS,
 		#	star_file=["Aligned.sortedByCoord.out.bam","Unmapped.out.mate1","Unmapped.out.mate2"]),
@@ -69,7 +69,7 @@ rule all:
 		#expand("7.rRNA/{library}.rRNA.{format}", library=LIBS, format=["bam","sam","out"]),
 		#expand("8.rRNA.FREE.READS/{library}_{end}.fastq", library=LIBS, end=[1, 2]),
 		expand("9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.{format}", library=LIBS, end=[1, 2], format=["html","zip"])
-	
+
 	output:
 		logs 	= directory("0.LOGS"),
 		reports	= directory("10.MULTIQC")
@@ -85,7 +85,7 @@ rule all:
 		shell("multiqc -o {output.reports} -n 9.Report_FastQC_rRNA_free.html -d 9.QC.rRNA.FREE.READS")
 		shell("mkdir -p {output.logs} && mv *.log {output.logs}")
 
-rule reads:	
+rule reads:
 	input:
 		reads = READS + "/{library}_{end}." + EXTENSION,
 		r1    = READS + "/{library}_1." + EXTENSION,
@@ -96,7 +96,7 @@ rule reads:
 rule fastqc_raw:
 	input:
 		reads = rules.reads.input.reads
-	output:	
+	output:
 		html = "1.QC.RAW/{library}_{end}_fastqc.html",
 		zip  = "1.QC.RAW/{library}_{end}_fastqc.zip"
 	message:
@@ -154,7 +154,7 @@ rule genome_index:
 		"Generate genome index for STAR"
 	log:
 		"GENOME/genome_index.log"
-	threads: 
+	threads:
 		CPUS_STAR
 	shell:
 		"mkdir -p {output.dir} && STAR --runThreadN {threads} --runMode genomeGenerate --genomeDir {output} --genomeFastaFiles {input.genome_files[0]}  --sjdbGTFfile {input.genome_files[1]} --sjdbOverhang 50 2> {log}"
@@ -167,11 +167,11 @@ rule rRNA_index:
 	log:
 		"rRNA_index.log"
 	run:
-		for link_index in sorted(RRNA.keys()):
-			shell("wget -q {link}".format(link=RRNA[link_index]))
+		for link_index in sorted(rRNA.keys()):
+			shell("wget -q {link}".format(link=rRNA[link_index]))
 			shell("mv {link_index} BWA_INDEX")
 			shell("bwa index {output.fasta} 2> {log}")
-	
+
 rule rRNA_contamination:
 	input:
 		r1 = rules.trim_reads.output.forward_paired,
@@ -192,7 +192,7 @@ rule rRNA_contamination:
 		shell("samtools flagstat -@ {threads} {output.bam} > {output.out}")
 		shell("samtools view -@ {threads} -u -f 12 -F 256 {output.bam} > {output.unmapped_bam}")
 
-rule trim_rRNA_contamination:
+rule remove_rRNA_contamination:
 	input:
 		unmapped_bam = rules.rRNA_contamination.output.unmapped_bam
 	output:
@@ -205,8 +205,8 @@ rule trim_rRNA_contamination:
 
 rule fastqc_trimmed_rRNA:
 	input:
-		r1 = rules.trim_rRNA_contamination.output.r1,
-		r2 = rules.trim_rRNA_contamination.output.r2
+		r1 = rules.remove_rRNA_contamination.output.r1,
+		r2 = rules.remove_rRNA_contamination.output.r2
 	output:
 		html = "9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.html",
 		zip  = "9.QC.rRNA.FREE.READS/{library}_{end}_fastqc.zip"
@@ -218,12 +218,12 @@ rule fastqc_trimmed_rRNA:
 		CPUS_FASTQC
 	shell:
 		"fastqc -o 9.QC.rRNA.FREE.READS -t {threads} {input} 2> {log}"
-		
+
 rule star:
 	input:
 		genome = rules.genome_index.output.dir,
-		r1 = rules.trim_rRNA_contamination.output.r1,
-		r2 = rules.trim_rRNA_contamination.output.r2
+		r1 = rules.remove_rRNA_contamination.output.r1,
+		r2 = rules.remove_rRNA_contamination.output.r2
 #		r1 = rules.trim_reads.output.forward_paired,
 #		r2 = rules.trim_reads.output.reverse_paired
 	output:
@@ -253,7 +253,7 @@ rule read_counts:
 		CPUS_READCOUNTS
 	shell:
 		"featureCounts -a {input.genome} -o {output} -T {threads} {input.aligned} 2> {log}"
-		
+
 rule phiX_genome:
 	output:
 		genome = directory(expand("{genome_phix}", genome_phix = GENOME4PHIX.keys()))
@@ -269,7 +269,7 @@ rule phiX_contamination:
 	input:
 		genome 	= rules.phiX_genome.output.genome,
 		r1	= rules.trim_reads.output.forward_paired,
-                r2 	= rules.trim_reads.output.reverse_paired
+        r2 	= rules.trim_reads.output.reverse_paired
 	message:
 		"PhiX contamination analysis"
 	output:
@@ -279,7 +279,7 @@ rule phiX_contamination:
 	threads:
 		CPUS_PHIX
 	shell:
-		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output} 2> {log}"	
+		"bowtie2 -p {threads} -x {input.genome}/Illumina/RTA/Sequence/Bowtie2Index/genome -1 {input.r1} -2 {input.r2} -S {output} 2> {log}"
 
 rule kraken_db:
 	output:
@@ -292,7 +292,7 @@ rule kraken_db:
 		CPUS_ARIA
 	run:
 		for link_index in sorted(KRAKEN_DB.keys()):
-			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))	
+			shell("aria2c -x {threads} -s {threads} -d KRAKEN_DB {link}".format(link=KRAKEN_DB[link_index],threads=CPUS_ARIA))
 			shell("tar -xzf KRAKEN_DB/{link_index} -C KRAKEN_DB")
 			shell("build_taxdb {output.kraken_db}/taxonomy/names.dmp {output.kraken_db}/taxonomy/nodes.dmp > {output.kraken_db}/taxDB 2> {log}")
 
@@ -312,4 +312,3 @@ rule microbial_contamination:
 		CPUS_KRAKEN
 	shell:
 		"krakenuniq --preload --db {input.kraken_db} --threads {threads} --paired --report-file {output.tsv} --fastq-input {input.unmapped_m81} {input.unmapped_m82} > {output.out}"
-
