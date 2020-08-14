@@ -1,5 +1,5 @@
 
-# R<sub>u</sub>NA-s<sub>eq</sub> (&#5809;<sub>&#5794;</sub>&#5822;&#5800;&#5835;) */roonas/* Pipeline
+# R<sub>u</sub>NA-s<sub>eq</sub> (&#5809;<sub>&#5794;</sub>&#5822;&#5800;&#5835;) */roonas/* Pipeline <img src="images/logo.png" alt="runas-logo" align="right" height=150px />
 
 ![Rule Graph](images/rule-graph.png?raw=true "Rule Graph")
 ## Requirements
